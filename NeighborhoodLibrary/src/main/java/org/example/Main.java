@@ -1,31 +1,32 @@
 package org.example;
 
+import java.util.Locale;
 import java.util.Scanner;
 
 public class Main {
 
-    //Each book has a different ID. All books start available.
+    //IDs identify books internally. Users search by title.
     private static final Book[] books = {
-            new Book(1, "9780590353427", "Harry Potter and the Sorcerer's Stone"),
-            new Book(2, "9780547928227", "The Hobbit"),
-            new Book(3, "9780451524935", "1984"),
-            new Book(4, "9780451526342", "Animal Farm"),
-            new Book(5, "9780061120084", "To Kill a Mockingbird"),
-            new Book(6, "9780743273565", "The Great Gatsby"),
-            new Book(7, "9780141439518", "Pride and Prejudice"),
-            new Book(8, "9780141441146", "Jane Eyre"),
-            new Book(9, "9780486282114", "Frankenstein"),
-            new Book(10, "9780486411095", "Dracula"),
-            new Book(11, "9780147514011", "Little Women"),
-            new Book(12, "9780061124952", "Charlotte's Web"),
-            new Book(13, "9780064471046", "The Lion, the Witch and the Wardrobe"),
-            new Book(14, "9780061122415", "The Alchemist"),
-            new Book(15, "9780439023481", "The Hunger Games"),
-            new Book(16, "9780439023498", "Catching Fire"),
-            new Book(17, "9780439023511", "Mockingjay"),
-            new Book(18, "9780786838653", "The Lightning Thief"),
-            new Book(19, "9781423103349", "The Sea of Monsters"),
-            new Book(20, "9780064401883", "The Secret Garden")
+            new Book(1, "9781421585642", "One-Punch Man, Vol. 1"),
+            new Book(2, "9781421585659", "One-Punch Man, Vol. 2"),
+            new Book(3, "9781421564616", "One-Punch Man, Vol. 3"),
+            new Book(4, "9781421569208", "One-Punch Man, Vol. 4"),
+            new Book(5, "9781421569543", "One-Punch Man, Vol. 5"),
+            new Book(6, "9781569319307", "Dragon Ball Z, Vol. 1"),
+            new Book(7, "9781569319314", "Dragon Ball Z, Vol. 2"),
+            new Book(8, "9781569319321", "Dragon Ball Z, Vol. 3"),
+            new Book(9, "9781569319338", "Dragon Ball Z, Vol. 4"),
+            new Book(10, "9781569319345", "Dragon Ball Z, Vol. 5"),
+            new Book(11, "9781421501680", "Death Note, Vol. 1"),
+            new Book(12, "9781421501697", "Death Note, Vol. 2"),
+            new Book(13, "9781421501703", "Death Note, Vol. 3"),
+            new Book(14, "9781421503318", "Death Note, Vol. 4"),
+            new Book(15, "9781421506265", "Death Note, Vol. 5"),
+            new Book(16, "9781506716015", "Cyberpunk 2077: Trauma Team"),
+            new Book(17, "9781506725666", "Cyberpunk 2077: You Have My Word"),
+            new Book(18, "9781506726274", "Cyberpunk 2077: Blackout"),
+            new Book(19, "9781506726830", "Cyberpunk 2077: XOXO"),
+            new Book(20, "9781506726847", "Cyberpunk 2077: Kickdown")
     };
 
     public static void main(String[] args) {
@@ -38,11 +39,13 @@ public class Main {
 
             if (choice.equals("1")) {
                 showAvailableBooks(scanner);
+                printReturnToMenu();
             } else if (choice.equals("2")) {
                 showCheckedOutBooks(scanner);
+                printReturnToMenu();
             } else if (choice.equals("3")) {
                 running = false;
-                System.out.println("Thanks for visiting Tre's Neighborhood Library!");
+                System.out.println("Thanks for visiting the Neighborhood Library!");
             } else {
                 System.out.println("Invalid choice. Please enter 1, 2, or 3.");
             }
@@ -57,6 +60,12 @@ public class Main {
         System.out.println("2. Show Checked Out Books");
         System.out.println("3. Exit");
         System.out.print("Enter your choice: ");
+    }
+
+    private static void printReturnToMenu() {
+        System.out.println("\n----------------------------------------");
+        System.out.println("Returning to the main menu...");
+        System.out.println("----------------------------------------");
     }
 
     private static void showAvailableBooks(Scanner scanner) {
@@ -89,7 +98,7 @@ public class Main {
     //true shows checked-out books; false shows available books.
     private static void displayBooksByStatus(boolean checkedOut) {
         boolean found = false;
-        String heading = "ID | ISBN | Title";
+        String heading = "Title | ISBN";
 
         if (checkedOut) {
             heading += " | Borrower";
@@ -98,14 +107,7 @@ public class Main {
 
         for (Book book : books) {
             if (book.isCheckedOut() == checkedOut) {
-                String details = book.getId() + " | " + book.getIsbn()
-                        + " | " + book.getTitle();
-
-                if (checkedOut) {
-                    details += " | " + book.getCheckedOutTo();
-                }
-
-                System.out.println(details);
+                System.out.println(formatBookDetails(book, checkedOut));
                 found = true;
             }
         }
@@ -120,23 +122,13 @@ public class Main {
     }
 
     private static void checkOutBook(Scanner scanner) {
-        System.out.print("Enter a book ID to check out, or X to return home: ");
-        String input = scanner.nextLine().trim();
+        Book book = findBookByTitle(scanner, false);
 
-        if (input.equalsIgnoreCase("X")) {
-            return;
-        }
-
-        Book book = findBookById(input);
         if (book == null) {
             return;
         }
 
-        if (book.isCheckedOut()) {
-            System.out.println("That book is already checked out. Returning home.");
-            return;
-        }
-
+        System.out.println("\nSelected: " + book.getTitle());
         System.out.print("Enter your name, or X to return home: ");
         String name = scanner.nextLine().trim();
 
@@ -145,56 +137,122 @@ public class Main {
         }
 
         if (name.isEmpty()) {
-            System.out.println("The borrower's name cannot be blank. Returning home.");
+            System.out.println("The borrower's name cannot be blank.");
             return;
         }
 
         book.checkOut(name);
-        System.out.println("Checked out: " + book.getTitle() + " to "
-                + book.getCheckedOutTo() + ". Returning home.");
+        System.out.println("\nCheckout complete!");
+        System.out.println("\"" + book.getTitle() + "\" is now checked out to "
+                + book.getCheckedOutTo() + ".");
     }
 
     private static void checkInBook(Scanner scanner) {
-        System.out.print("Enter the book ID to check in, or X to return home: ");
-        String input = scanner.nextLine().trim();
+        Book book = findBookByTitle(scanner, true);
 
-        if (input.equalsIgnoreCase("X")) {
-            return;
-        }
-
-        Book book = findBookById(input);
         if (book == null) {
             return;
         }
 
-        if (!book.isCheckedOut()) {
-            System.out.println("That book is already checked in. Returning home.");
-            return;
-        }
-
         book.checkIn();
-        System.out.println("Checked in: " + book.getTitle() + ". Returning home.");
+        System.out.println("\nReturn complete!");
+        System.out.println("\"" + book.getTitle() + "\" is now available to borrow.");
     }
 
-    //Both checkout and check-in use this same lookup method.
-    private static Book findBookById(String input) {
-        int bookId;
+    private static String formatBookDetails(Book book, boolean showBorrower) {
+        String details = book.getTitle() + " | " + book.getIsbn();
 
-        //Handle text or numbers too large for an int without crashing.
-        try {
-            bookId = Integer.parseInt(input);
-        } catch (NumberFormatException exception) {
-            System.out.println("Please enter a whole-number book ID. Returning home.");
+        if (showBorrower) {
+            details += " | " + book.getCheckedOutTo();
+        }
+
+        return details;
+    }
+
+    //Search available books for checkout, or borrowed books for check-in.
+    private static Book findBookByTitle(Scanner scanner, boolean checkedOut) {
+        System.out.print("Enter a title or part of a title (X to return home): ");
+        String input = scanner.nextLine().trim();
+
+        if (input.equalsIgnoreCase("X")) {
             return null;
         }
 
+        String searchText = normalizeTitle(input);
+
+        if (searchText.isEmpty()) {
+            System.out.println("Please enter a title or part of a title.");
+            return null;
+        }
+
+        Book[] matches = new Book[books.length];
+        int matchCount = 0;
+        boolean titleExists = false;
+
         for (Book book : books) {
-            if (book.getId() == bookId) {
-                return book;
+            if (normalizeTitle(book.getTitle()).contains(searchText)) {
+                titleExists = true;
+
+                if (book.isCheckedOut() == checkedOut) {
+                    matches[matchCount] = book;
+                    matchCount++;
+                }
             }
         }
 
-        System.out.println("No book has ID " + bookId + ". Returning home.");
-        return null;
+        if (matchCount == 0) {
+            if (!titleExists) {
+                System.out.println("No titles match \"" + input + "\".");
+            } else if (checkedOut) {
+                System.out.println("Matching books are already checked in.");
+            } else {
+                System.out.println("Matching books are already checked out.");
+            }
+
+            return null;
+        }
+
+        if (matchCount == 1) {
+            return matches[0];
+        }
+
+        System.out.println("\nSeveral titles match your search:");
+
+        for (int i = 0; i < matchCount; i++) {
+            System.out.println((i + 1) + ". "
+                    + formatBookDetails(matches[i], checkedOut));
+        }
+
+        //These numbers select search results; they are not book IDs.
+        while (true) {
+            System.out.print("Enter the result number (1-" + matchCount
+                    + "), or X to return home: ");
+
+            String choice = scanner.nextLine().trim();
+
+            if (choice.equalsIgnoreCase("X")) {
+                return null;
+            }
+
+            int selection;
+
+            try {
+                selection = Integer.parseInt(choice);
+            } catch (NumberFormatException exception) {
+                System.out.println("Please enter a listed result number or X.");
+                continue;
+            }
+
+            if (selection >= 1 && selection <= matchCount) {
+                return matches[selection - 1];
+            }
+
+            System.out.println("Please choose a result from 1 to " + matchCount + ".");
+        }
+    }
+
+    //Ignore capitalization, spaces and punctuation when matching titles.
+    private static String normalizeTitle(String title) {
+        return title.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
     }
 }
