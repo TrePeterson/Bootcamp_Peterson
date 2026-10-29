@@ -50,3 +50,4 @@ For branding, change STORE_NAME near the top of Main.java.
 ## Validation
 
 Compiled and run with Amazon Corretto 17. Console checks covered searches, navigation, add/merge/remove, invalid and canceled input, insufficient payment, receipt saving, exact change, cart clearing, and a forced receipt-save failure. A separate 60-assertion harness checked model calculations, overflow, file validation, and receipt collision handling.
+(Ai was used to create and develop this read me)
