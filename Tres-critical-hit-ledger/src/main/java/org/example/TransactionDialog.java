@@ -14,6 +14,8 @@ import javafx.scene.control.DialogPane;
 import javafx.scene.control.Label;
 import javafx.scene.control.TextField;
 import javafx.scene.control.TextFormatter;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.ColumnConstraints;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.Priority;
@@ -120,6 +122,19 @@ public final class TransactionDialog {
         Button cancelButton = (Button) pane.lookupButton(ButtonType.CANCEL);
         cancelButton.getStyleClass().add("secondary-button");
         cancelButton.setCancelButton(true);
+
+        // Validate the date's typed text before DatePicker can replace an invalid edit.
+        date.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                reviewButton.fire();
+                event.consume();
+            }
+        });
+        date.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
+            if (event.getCode() == KeyCode.ENTER) {
+                event.consume();
+            }
+        });
 
         // Consuming a failed or canceled action keeps the dialog and entered values open.
         reviewButton.addEventFilter(ActionEvent.ACTION, event -> {
@@ -284,12 +299,13 @@ public final class TransactionDialog {
 
     private static void styleDialog(DialogPane pane) {
         pane.getStyleClass().add("transaction-dialog");
-        pane.setStyle("-fx-background-color: #14151b; -fx-base: #14151b; "
-                + "-fx-control-inner-background: #20222d; -fx-text-base-color: #f4f4f5; "
-                + "-fx-text-background-color: #f4f4f5;");
         URL stylesheet = TransactionDialog.class.getResource("/org/example/desktop/potara.css");
         if (stylesheet != null) {
             pane.getStylesheets().add(stylesheet.toExternalForm());
+        } else {
+            pane.setStyle("-fx-background-color: #14151b; -fx-base: #14151b; "
+                    + "-fx-control-inner-background: #20222d; -fx-text-base-color: #f4f4f5; "
+                    + "-fx-text-background-color: #f4f4f5;");
         }
     }
 }

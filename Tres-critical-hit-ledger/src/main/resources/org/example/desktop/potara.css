@@ -96,6 +96,7 @@
 .dialog-pane { -fx-background-color: #17251d; -fx-padding: 12; }
 .dialog-pane .header-panel { -fx-background-color: #1e3022; }
 .dialog-pane .button-bar .button { -fx-background-color: #c1e894; -fx-text-fill: #162012; -fx-background-radius: 7; -fx-padding: 9 18; }
+.dialog-pane .button-bar .button.secondary-button { -fx-background-color: #223426; -fx-text-fill: #e3eadc; -fx-border-color: #526447; -fx-border-radius: 7; }
 .dialog-title { -fx-text-fill: #e6c76d; -fx-font-size: 23px; -fx-font-weight: bold; }
 .date-picker-popup { -fx-background-color: #263721; }
 .date-picker-popup .month-year-pane { -fx-background-color: #30452b; }

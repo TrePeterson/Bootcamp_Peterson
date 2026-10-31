@@ -12,6 +12,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
@@ -64,6 +66,7 @@ public final class LedgerDesktopApp extends Application {
     private final VBox advanced = new VBox(12);
     private Button advancedButton;
     private boolean changingFilters;
+    private String currentView = "overview";
 
     @Override
     public void start(Stage stage) {
@@ -244,8 +247,12 @@ public final class LedgerDesktopApp extends Application {
         advancedButton.setOnAction(event -> showAdvanced(!advanced.isVisible()));
         Button reset = button("Clear filters", "text-button");
         reset.setOnAction(event -> {
-            resetFilterValues();
-            applyFilters();
+            if (currentView.equals("partner")) {
+                navigate("transactions", navigation.get(1));
+            } else {
+                resetFilterValues();
+                applyFilters();
+            }
             setStatus("Filters cleared. Showing all transactions.", false);
         });
         HBox heading = new HBox(10, label("Transaction ledger", "section-title"), spacer, advancedButton, reset);
@@ -268,7 +275,12 @@ public final class LedgerDesktopApp extends Application {
         allTypes.setSelected(true);
         types.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == null) {
-                allTypes.setSelected(true);
+                // Wait until ToggleGroup finishes clearing its current selection.
+                javafx.application.Platform.runLater(() -> {
+                    if (types.getSelectedToggle() == null) {
+                        allTypes.setSelected(true);
+                    }
+                });
             }
             applyFilters();
         });
@@ -321,6 +333,20 @@ public final class LedgerDesktopApp extends Application {
         description.setOnAction(event -> apply.fire());
         vendor.setOnAction(event -> apply.fire());
         amount.setOnAction(event -> apply.fire());
+        for (DatePicker picker : List.of(startDate, endDate)) {
+            picker.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+                if (event.getCode() == KeyCode.ENTER) {
+                    apply.fire();
+                    event.consume();
+                }
+            });
+            // JavaFX normally replaces the editor on Enter; keep invalid text visible for correction.
+            picker.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
+                if (event.getCode() == KeyCode.ENTER) {
+                    event.consume();
+                }
+            });
+        }
     }
 
     private VBox field(String name, Control input) {
@@ -377,8 +403,10 @@ public final class LedgerDesktopApp extends Application {
         table.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
         table.setMinHeight(280);
         table.setPrefHeight(355);
-        table.setPlaceholder(new VBox(8, label("No transactions match this view", "section-title"),
-                label("Clear a filter, or add your first deposit or payment.", "muted")) {{ setAlignment(Pos.CENTER); }});
+        VBox emptyState = new VBox(8, label("No transactions match this view", "section-title"),
+                label("Clear a filter, or add your first deposit or payment.", "muted"));
+        emptyState.setAlignment(Pos.CENTER);
+        table.setPlaceholder(emptyState);
         table.setAccessibleText("Transactions, newest first");
         table.setRowFactory(view -> {
             TableRow<Transaction> row = new TableRow<>();
@@ -416,6 +444,7 @@ public final class LedgerDesktopApp extends Application {
     }
 
     private void navigate(String view, Button button) {
+        currentView = view;
         for (Button link : navigation) {
             link.getStyleClass().remove("nav-selected");
         }
@@ -542,7 +571,7 @@ public final class LedgerDesktopApp extends Application {
             @Override public LocalDate fromString(String text) {
                 // Validation happens when filters are applied, so incomplete typing cannot crash the UI.
                 try { return text == null || text.isBlank() ? null : LocalDate.parse(text.trim()); }
-                catch (DateTimeParseException ex) { return picker.getValue(); }
+                catch (DateTimeParseException ex) { return null; }
             }
         });
         return picker;
@@ -565,8 +594,7 @@ public final class LedgerDesktopApp extends Application {
 
     private void addTransaction(boolean deposit) {
         if (TransactionDialog.show(window, deposit, ledger::addTransaction)) {
-            resetFilterValues();
-            applyFilters();
+            navigate("transactions", navigation.get(1));
             setStatus((deposit ? "Deposit" : "Payment") + " saved. Your ledger is up to date.", false);
         }
     }
@@ -577,8 +605,17 @@ public final class LedgerDesktopApp extends Application {
             LedgerService candidateLedger = new LedgerService(candidateFiles);
             files = candidateFiles;
             ledger = candidateLedger;
-            applyFilters();
-            setStatus("Reloaded " + ledger.getAll().size() + " saved transactions.", false);
+            boolean validFilters = applyFilters();
+            if (!validFilters) {
+                if (currentView.equals("partner")) {
+                    navigate("transactions", navigation.get(1));
+                } else {
+                    resetFilterValues();
+                    applyFilters();
+                }
+            }
+            setStatus("Reloaded " + ledger.getAll().size() + " saved transactions."
+                    + (validFilters ? "" : " Invalid filters were cleared."), false);
         } catch (IOException | IllegalArgumentException ex) {
             setStatus("Reload failed. " + ex.getMessage(), true);
         }
