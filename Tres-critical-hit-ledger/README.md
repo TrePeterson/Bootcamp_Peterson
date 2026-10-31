@@ -178,6 +178,8 @@ The displayed net change is deposits minus payments in the selected records. It 
 
 ## Credits
 
+(This Readme was 100% written by AI)
+
 Created by **Tre Peterson** for the Java Focus Academy Accounting Ledger capstone.
 
 Tables use [ASCII Table by Sven van der Meer](https://github.com/vdmeer/asciitable), version 0.3.2, distributed under the Apache License 2.0. The presentation takes inspiration from Dragon Ball's Potara theme. Potara Fusion Gear and its connection with Potara Customs provide the business theme for the fictional demonstration transactions.
