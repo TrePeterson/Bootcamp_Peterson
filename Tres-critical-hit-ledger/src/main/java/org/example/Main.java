@@ -1,11 +1,5 @@
 package org.example;
 
-import de.vandermeer.asciitable.AT_Row;
-import de.vandermeer.asciitable.AsciiTable;
-import de.vandermeer.asciitable.CWC_FixedWidth;
-import de.vandermeer.asciithemes.a7.A7_Grids;
-import de.vandermeer.skb.interfaces.transformers.textformat.TextAlignment;
-
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -15,23 +9,12 @@ import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 
 public class Main {
     private static final String APP_NAME = "TRE'S CRITICAL HIT LEDGER";
-    private static final String DIVIDER = "=".repeat(104);
-    private static final boolean USE_COLOR = Boolean.parseBoolean(
-            System.getProperty("ledger.color", "true"));
-    private static final String RESET = "\u001B[0m";
-    private static final String CYAN = "\u001B[36m";
-    private static final String GREEN = "\u001B[32m";
-    private static final String RED = "\u001B[31m";
-    private static final String GOLD = "\u001B[33m";
-    private static final String PURPLE = "\u001B[35m";
-    private static final String BOLD = "\u001B[1m";
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
     private static boolean inputClosed;
@@ -44,14 +27,14 @@ public class Main {
             fileManager = new FileManager();
             ledger = new LedgerService(fileManager);
         } catch (IOException | IllegalArgumentException exception) {
-            System.out.println(color(RED, "The ledger could not be opened: " + exception.getMessage()));
+            ConsoleHelper.error("The ledger could not be opened: " + exception.getMessage());
             System.out.println("Check transactions.csv and restart. Existing history has not been replaced.");
             return;
         }
 
-        printHeader(APP_NAME);
-        System.out.println(color(GOLD, "Track your gold. Know your numbers."));
-        System.out.println(color(GREEN, "Loaded " + ledger.getAll().size() + " transaction(s). Your ledger is ready."));
+        ConsoleHelper.printHeader(APP_NAME);
+        ConsoleHelper.notice("Track your $$$. Know your $$$.");
+        ConsoleHelper.success("Loaded " + ledger.getAll().size() + " transaction(s). Your ledger is ready.");
         System.out.println("Data file: " + fileManager.getFilePath());
 
         try (Scanner scanner = new Scanner(System.in)) {
@@ -65,10 +48,10 @@ public class Main {
 
     private static void runHome(Scanner scanner, LedgerService ledger) {
         while (!inputClosed) {
-            printHeader("HOME | " + APP_NAME);
+            ConsoleHelper.printHeader("HOME | " + APP_NAME);
             List<Transaction> entries = ledger.getAll();
             System.out.println("Recorded transactions: " + entries.size()
-                    + " | Recorded net change: " + money(ledger.getNetChange(entries)));
+                    + " | Recorded net change: " + ConsoleHelper.money(ledger.getNetChange(entries)));
             System.out.println("D) Add deposit");
             System.out.println("P) Make payment");
             System.out.println("L) View ledger and reports");
@@ -91,7 +74,7 @@ public class Main {
 
     private static void runLedger(Scanner scanner, LedgerService ledger) {
         while (!inputClosed) {
-            printHeader("LEDGER | Every transaction tells a story");
+            ConsoleHelper.printHeader("LEDGER | Every transaction tells a story");
             System.out.println("A) All transactions");
             System.out.println("D) Deposits only");
             System.out.println("P) Payments only");
@@ -117,7 +100,7 @@ public class Main {
     private static void runReports(Scanner scanner, LedgerService ledger) {
         while (!inputClosed) {
             LocalDate today = LocalDate.now();
-            printHeader("REPORTS | Follow the money");
+            ConsoleHelper.printHeader("REPORTS | Follow the money");
             System.out.println("Today's date: " + today);
             System.out.println("1) Month to date");
             System.out.println("2) Previous month");
@@ -160,7 +143,7 @@ public class Main {
     }
 
     private static void addTransaction(Scanner scanner, LedgerService ledger, boolean deposit) {
-        printHeader(deposit ? "ADD DEPOSIT | Money in" : "MAKE PAYMENT | Money out");
+        ConsoleHelper.printHeader(deposit ? "ADD DEPOSIT | Money in" : "MAKE PAYMENT | Money out");
         System.out.println("Enter X at any prompt to cancel. Nothing is saved until you confirm.");
         LocalDateTime now = LocalDateTime.now().withNano(0);
 
@@ -188,8 +171,8 @@ public class Main {
         }
 
         Transaction transaction = new Transaction(date, time, description, vendor, amount);
-        printHeader("REVIEW BEFORE SAVING");
-        printTransactionTable(List.of(transaction));
+        ConsoleHelper.printHeader("REVIEW BEFORE SAVING");
+        ConsoleHelper.printTransactions(List.of(transaction));
         if (!confirm(scanner, "Save this " + (deposit ? "deposit" : "payment") + "? (Y/N): ")) {
             canceled();
             return;
@@ -197,19 +180,19 @@ public class Main {
 
         try {
             ledger.addTransaction(transaction);
-            System.out.println(color(GREEN, "SAVED: " + (deposit ? "Deposit" : "Payment") + " of " + money(amount.abs())
-                    + " for " + description + "."));
+            ConsoleHelper.success("SAVED: " + (deposit ? "Deposit" : "Payment") + " of " + ConsoleHelper.money(amount.abs())
+                    + " for " + description + ".");
             System.out.println("Your transaction is recorded in transactions.csv.");
-            System.out.println("Recorded net change: " + money(ledger.getNetChange(ledger.getAll())));
+            System.out.println("Recorded net change: " + ConsoleHelper.money(ledger.getNetChange(ledger.getAll())));
         } catch (IOException exception) {
-            System.out.println(color(RED, "NOT SAVED: " + exception.getMessage()));
+            ConsoleHelper.error("NOT SAVED: " + exception.getMessage());
             System.out.println("This transaction was not added to the ledger. Resolve the file problem before retrying.");
         }
         pause(scanner);
     }
 
     private static void searchVendor(Scanner scanner, LedgerService ledger) {
-        printHeader("SEARCH BY VENDOR");
+        ConsoleHelper.printHeader("SEARCH BY VENDOR");
         System.out.println("Enter the full vendor name. Capitalization does not matter.");
         System.out.println("For part of a name, use Custom Search. Enter X to cancel.");
         String vendor = readText(scanner, "Vendor: ", false);
@@ -218,7 +201,7 @@ public class Main {
     }
 
     private static void customSearch(Scanner scanner, LedgerService ledger) {
-        printHeader("CUSTOM SEARCH | Find the transactions you need");
+        ConsoleHelper.printHeader("CUSTOM SEARCH | Find the transactions you need");
         System.out.println("Press Enter to skip any filter, or X to cancel.");
         System.out.println("Results must match ALL filters you provide. Dates include both endpoints.");
         System.out.println("Description and vendor accept partial names and ignore capitalization.");
@@ -253,124 +236,20 @@ public class Main {
 
     private static void showResults(Scanner scanner, LedgerService ledger,
                                     String title, List<Transaction> entries) {
-        printHeader(title);
+        ConsoleHelper.printHeader(title);
         if (entries.isEmpty()) {
-            System.out.println(color(GOLD, "No transactions found for this view. Try another report or different filters."));
+            ConsoleHelper.notice("No transactions found for this view. Try another report or different filters.");
         } else {
-            printTransactionTable(entries);
+            ConsoleHelper.printTransactions(entries);
             System.out.println("Showing " + entries.size() + " transaction(s), newest first.");
         }
-        printTotals(ledger, entries);
+        ConsoleHelper.printTotals(ledger.getTotalDeposits(entries),
+                ledger.getTotalPayments(entries), ledger.getNetChange(entries));
         pause(scanner);
     }
 
-    private static void printTransactionTable(List<Transaction> entries) {
-        AsciiTable table = createTable(12, 10, 34, 24, 18);
-        table.addRule();
-        table.addRow("Date", "Time", "Description", "Vendor / Customer", "Amount");
-        table.addRule();
-        List<AT_Row> rows = new ArrayList<>();
-        for (Transaction entry : entries) {
-            rows.add(table.addRow(entry.getDate(), entry.getTime().format(TIME_FORMAT),
-                    entry.getDescription(), entry.getVendor(), money(entry.getAmount())));
-            table.addRule();
-        }
-        table.setPaddingLeftRight(1);
-        table.setTextAlignment(TextAlignment.LEFT);
-        for (AT_Row row : rows) {
-            row.getCells().get(4).getContext().setTextAlignment(TextAlignment.RIGHT);
-        }
-        printColoredTable(table);
-    }
-
-    private static void printTotals(LedgerService ledger, List<Transaction> entries) {
-        AsciiTable table = createTable(27, 25);
-        table.addRule();
-        table.addRow("TOTALS FOR THIS VIEW", "Amount");
-        table.addRule();
-        AT_Row deposits = table.addRow("Deposits", money(ledger.getTotalDeposits(entries)));
-        AT_Row payments = table.addRow("Payments (money out)", money(ledger.getTotalPayments(entries)));
-        AT_Row netChange = table.addRow("Net change", money(ledger.getNetChange(entries)));
-        table.addRule();
-        table.setPaddingLeftRight(1);
-        table.setTextAlignment(TextAlignment.LEFT);
-        for (AT_Row row : List.of(deposits, payments, netChange)) {
-            row.getCells().get(1).getContext().setTextAlignment(TextAlignment.RIGHT);
-        }
-        printColoredTable(table);
-        System.out.println("Net change = deposits minus payments for the displayed transactions.");
-    }
-
-    private static AsciiTable createTable(int... columnWidths) {
-        AsciiTable table = new AsciiTable();
-        CWC_FixedWidth widths = new CWC_FixedWidth();
-        int totalWidth = columnWidths.length + 1;
-        for (int width : columnWidths) {
-            widths.add(width);
-            totalWidth += width;
-        }
-        table.getRenderer().setCWC(widths);
-        table.getContext().setWidth(totalWidth);
-        // ASCII borders stay readable in terminals that do not use UTF-8.
-        table.getContext().setGrid(A7_Grids.minusBarPlusEquals());
-        return table;
-    }
-
-    private static void printColoredTable(AsciiTable table) {
-        // Render first: invisible ANSI color codes must not affect column widths.
-        String rendered = table.render();
-        if (!USE_COLOR) {
-            System.out.println(rendered);
-            return;
-        }
-
-        boolean header = true;
-        for (String line : rendered.split("\\R")) {
-            if (line.startsWith("+")) {
-                System.out.println(color(CYAN, line));
-            } else if (line.startsWith("|")) {
-                System.out.println(colorTableRow(line, header));
-                header = false;
-            } else {
-                System.out.println(line);
-            }
-        }
-    }
-
-    private static String colorTableRow(String line, boolean header) {
-        String[] cells = line.split("\\|", -1);
-        String label = cells[1].trim();
-        StringBuilder result = new StringBuilder(color(CYAN, "|"));
-        for (int index = 1; index < cells.length - 1; index++) {
-            String cell = cells[index];
-            if (header) {
-                cell = color(BOLD + PURPLE, cell);
-            } else if (index == cells.length - 2) {
-                String amount = cell.trim();
-                String shade = amount.startsWith("-") || label.equals("Payments (money out)")
-                        ? RED : GREEN;
-                if (amount.equals("$0.00")) {
-                    shade = GOLD;
-                }
-                cell = color(BOLD + shade, cell);
-            } else if (label.equals("Net change")) {
-                cell = color(BOLD + GOLD, cell);
-            }
-            result.append(cell).append(color(CYAN, "|"));
-        }
-        return result.toString();
-    }
-
-    private static String color(String shade, String text) {
-        return USE_COLOR ? shade + text + RESET : text;
-    }
-
-    private static String money(BigDecimal amount) {
-        return String.format(Locale.US, "%s$%,.2f", amount.signum() < 0 ? "-" : "", amount.abs());
-    }
-
     private static String readLine(Scanner scanner, String prompt) {
-        System.out.print(color(CYAN, prompt));
+        ConsoleHelper.prompt(prompt);
         if (!scanner.hasNextLine()) {
             inputClosed = true;
             return null;
@@ -484,13 +363,9 @@ public class Main {
     }
 
     private static void canceled() {
-        System.out.println(color(GOLD, "Canceled. No transaction was saved."));
+        ConsoleHelper.notice("Canceled. No transaction was saved.");
     }
 
-    private static void printHeader(String title) {
-        System.out.println();
-        System.out.println(color(CYAN, DIVIDER));
-        System.out.println(color(BOLD + PURPLE, title));
-        System.out.println(color(CYAN, DIVIDER));
-    }
 }
+
+//im so glad!
