@@ -71,11 +71,18 @@ public final class LedgerDesktopApp extends Application {
     @Override
     public void start(Stage stage) {
         window = stage;
+        // Windows chooses the best size for the title bar, taskbar, and Alt+Tab.
+        for (int size : new int[]{16, 32, 48, 64, 128, 256}) {
+            String icon = "/org/example/desktop/icons/potara-" + size + ".png";
+            window.getIcons().add(new Image(getClass().getResource(icon).toExternalForm()));
+        }
         try {
             files = new FileManager();
             ledger = new LedgerService(files);
         } catch (IOException | IllegalArgumentException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
+            Stage errorWindow = (Stage) alert.getDialogPane().getScene().getWindow();
+            errorWindow.getIcons().setAll(window.getIcons());
             alert.setTitle("Potara Fusion Ledger");
             alert.setHeaderText("The ledger could not be opened");
             alert.setContentText(ex.getMessage() + "\n\nCheck transactions.csv before restarting.");

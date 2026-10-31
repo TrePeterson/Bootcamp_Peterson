@@ -186,6 +186,8 @@ There are **eight Java classes**. `Main` and `ConsoleHelper` handle the console;
 
 Desktop colors and layout are defined in `potara.css`. The three PNG illustrations are packaged resources. Their prompts and provenance are documented in [Asset prompts](docs/ASSET_PROMPTS.md).
 
+The desktop window uses a custom Potara-inspired icon: paired green gemstones and gold hoops on a dark-green badge. Its original vector artwork and six PNG sizes are packaged in `src/main/resources/org/example/desktop/icons`. Restart the desktop application after changing these assets to reload the window and taskbar icon.
+
 ## Design Choices
 
 **Exact money calculations:** `BigDecimal` avoids binary floating-point rounding problems when adding and subtracting money.
