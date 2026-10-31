@@ -18,7 +18,6 @@ public final class ConsoleHelper {
     private static final boolean USE_COLOR = Boolean.parseBoolean(
             System.getProperty("ledger.color", "true"));
     private static final String RESET = "\u001B[0m";
-    private static final String CYAN = "\u001B[36m";
     private static final String GREEN = "\u001B[32m";
     private static final String RED = "\u001B[31m";
     private static final String GOLD = "\u001B[33m";
@@ -39,18 +38,18 @@ public final class ConsoleHelper {
     }
 
     public static void notice(String message) {
-        System.out.println(color(GOLD, message));
+        System.out.println(color(PURPLE, message));
     }
 
     public static void prompt(String message) {
-        System.out.print(color(CYAN, message));
+        System.out.print(color(GREEN, message));
     }
 
     public static void printHeader(String title) {
         System.out.println();
-        System.out.println(color(CYAN, DIVIDER));
-        System.out.println(color(BOLD + PURPLE, title));
-        System.out.println(color(CYAN, DIVIDER));
+        System.out.println(color(GOLD, DIVIDER));
+        System.out.println(color(BOLD + GREEN, title));
+        System.out.println(color(GOLD, DIVIDER));
     }
 
     public static String money(BigDecimal amount) {
@@ -121,7 +120,7 @@ public final class ConsoleHelper {
         boolean header = true;
         for (String line : rendered.split("\\R")) {
             if (line.startsWith("+")) {
-                System.out.println(color(CYAN, line));
+                System.out.println(color(GOLD, line));
             } else if (line.startsWith("|")) {
                 System.out.println(colorTableRow(line, header));
                 header = false;
@@ -134,11 +133,11 @@ public final class ConsoleHelper {
     private static String colorTableRow(String line, boolean header) {
         String[] cells = line.split("\\|", -1);
         String label = cells[1].trim();
-        StringBuilder result = new StringBuilder(color(CYAN, "|"));
+        StringBuilder result = new StringBuilder(color(GOLD, "|"));
         for (int index = 1; index < cells.length - 1; index++) {
             String cell = cells[index];
             if (header) {
-                cell = color(BOLD + PURPLE, cell);
+                cell = color(BOLD + GREEN, cell);
             } else if (index == cells.length - 2) {
                 String amount = cell.trim();
                 String shade = amount.startsWith("-") || label.equals("Payments (money out)")
@@ -148,9 +147,9 @@ public final class ConsoleHelper {
                 }
                 cell = color(BOLD + shade, cell);
             } else if (label.equals("Net change")) {
-                cell = color(BOLD + GOLD, cell);
+                cell = color(BOLD + PURPLE, cell);
             }
-            result.append(cell).append(color(CYAN, "|"));
+            result.append(cell).append(color(GOLD, "|"));
         }
         return result.toString();
     }

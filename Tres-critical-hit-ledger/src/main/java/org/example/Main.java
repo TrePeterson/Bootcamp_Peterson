@@ -14,7 +14,7 @@ import java.util.Locale;
 import java.util.Scanner;
 
 public class Main {
-    private static final String APP_NAME = "TRE'S CRITICAL HIT LEDGER";
+    private static final String APP_NAME = "POTARA FUSION LEDGER";
     private static final DateTimeFormatter TIME_FORMAT =
             DateTimeFormatter.ofPattern("HH:mm:ss").withResolverStyle(ResolverStyle.STRICT);
     private static boolean inputClosed;
@@ -33,7 +33,8 @@ public class Main {
         }
 
         ConsoleHelper.printHeader(APP_NAME);
-        ConsoleHelper.notice("Track your $$$. Know your $$$.");
+        ConsoleHelper.notice("Two sides of your money. One powerful ledger.");
+        ConsoleHelper.notice("POTARA FUSION GEAR | Accessories and upgrades for your next build.");
         ConsoleHelper.success("Loaded " + ledger.getAll().size() + " transaction(s). Your ledger is ready.");
         System.out.println("Data file: " + fileManager.getFilePath());
 
@@ -74,7 +75,7 @@ public class Main {
 
     private static void runLedger(Scanner scanner, LedgerService ledger) {
         while (!inputClosed) {
-            ConsoleHelper.printHeader("LEDGER | Every transaction tells a story");
+            ConsoleHelper.printHeader("LEDGER | Income and expenses, fused into one view");
             System.out.println("A) All transactions");
             System.out.println("D) Deposits only");
             System.out.println("P) Payments only");
