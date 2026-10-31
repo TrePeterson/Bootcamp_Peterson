@@ -177,6 +177,7 @@ public final class TransactionDialog {
                 }
             }
         });
+        picker.getEditor().setText(initialDate.format(DATE_FORMAT));
         return picker;
     }
 
