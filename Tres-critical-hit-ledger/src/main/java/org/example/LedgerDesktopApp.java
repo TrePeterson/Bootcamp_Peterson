@@ -1,10 +1,12 @@
 package org.example;
 
 import javafx.application.Application;
+import javafx.beans.binding.Bindings;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -13,17 +15,24 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.stage.Stage;
+import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.File;
 import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
@@ -39,6 +48,19 @@ public final class LedgerDesktopApp extends Application {
     private Stage window;
     private FileManager files;
     private LedgerService ledger;
+    private Path normalFile;
+    private boolean demoMode;
+    private final UiMotion motion = new UiMotion();
+    private VBox workspace;
+    private ScrollPane workspaceScroll;
+    private final HBox modeBanner = new HBox(12);
+    private final Button demoButton = button("Presentation mode", "secondary-button");
+    private final CashFlowChart cashFlow = new CashFlowChart();
+    private TitledPane chartPanel;
+    private final Button exportButton = button("Export PDF report", "secondary-button");
+    private final Button openReportButton = button("Open saved report ↗", "text-button");
+    private Path lastExport;
+    private String appliedFilterSummary = "All time | All entries";
     private final ObservableList<Transaction> visible = FXCollections.observableArrayList();
     private final TableView<Transaction> table = new TableView<>(visible);
     private final TextField search = new TextField();
@@ -58,6 +80,7 @@ public final class LedgerDesktopApp extends Application {
     private final Label netChange = label("$0.00", "metric-value", "gold-text");
     private final Label resultCount = label("", "muted");
     private final Label status = label("Ready", "status-text");
+    private final Circle statusDot = new Circle(4, Color.web("#b9e88a"));
     private final Label fileStatus = label("", "muted");
     private final Label filterError = label("", "error-label");
     private final Label scope = label("All-time overview", "eyebrow");
@@ -78,6 +101,7 @@ public final class LedgerDesktopApp extends Application {
         }
         try {
             files = new FileManager();
+            normalFile = files.getFilePath();
             ledger = new LedgerService(files);
         } catch (IOException | IllegalArgumentException ex) {
             Alert alert = new Alert(Alert.AlertType.ERROR);
@@ -93,25 +117,49 @@ public final class LedgerDesktopApp extends Application {
 
         BorderPane root = new BorderPane();
         root.getStyleClass().add("app-root");
-        root.setLeft(buildSidebar());
-        VBox content = new VBox(24, buildHeader(), buildMetrics(), buildGearSection(), buildLedgerPanel());
-        content.getStyleClass().add("workspace");
-        ScrollPane scroll = new ScrollPane(content);
-        scroll.setFitToWidth(true);
-        scroll.getStyleClass().add("workspace-scroll");
-        root.setCenter(scroll);
+        root.setLeft(buildSidebarScroll());
+        buildModeBanner();
+        workspace = new VBox(24, modeBanner, buildHeader(), buildMetrics(), buildLedgerPanel(), buildGearSection());
+        workspace.getStyleClass().add("workspace");
+        workspaceScroll = new ScrollPane(workspace);
+        workspaceScroll.setFitToWidth(true);
+        workspaceScroll.getStyleClass().add("workspace-scroll");
+        root.setCenter(workspaceScroll);
         root.setBottom(buildStatusBar());
 
         Scene scene = new Scene(root, 1440, 960);
         scene.getStylesheets().add(getClass().getResource(STYLE).toExternalForm());
+        installShortcuts(scene);
         window.setScene(scene);
         window.setTitle("Potara Fusion Ledger | Potara Fusion Gear");
         window.setMinWidth(1100);
         window.setMinHeight(760);
+        updateModeAppearance();
         window.show();
         navigation.get(0).getStyleClass().add("nav-selected");
         applyFilters();
         setStatus("Ledger loaded. You're ready to go.", false);
+        motion.reveal(workspace);
+    }
+
+    @Override
+    public void stop() {
+        motion.stop();
+    }
+
+    private ScrollPane buildSidebarScroll() {
+        VBox sidebar = buildSidebar();
+        sidebar.setMinWidth(0);
+        sidebar.setMinHeight(Region.USE_PREF_SIZE);
+        ScrollPane scroll = new ScrollPane(sidebar);
+        scroll.setFitToWidth(true);
+        scroll.setFitToHeight(true);
+        scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scroll.setMinWidth(228);
+        scroll.setPrefWidth(228);
+        scroll.setMaxWidth(228);
+        scroll.getStyleClass().add("sidebar-scroll");
+        return scroll;
     }
 
     private VBox buildSidebar() {
@@ -128,6 +176,21 @@ public final class LedgerDesktopApp extends Application {
         VBox links = new VBox(7, label("WORKSPACE", "nav-caption"), overview, transactions, reports);
         VBox partnerLinks = new VBox(8, label("CONNECTED BUSINESS", "nav-caption"), partner);
         partnerLinks.setPadding(new Insets(24, 0, 0, 0));
+        demoButton.setWrapText(true);
+        demoButton.setMaxWidth(Double.MAX_VALUE);
+        demoButton.setOnAction(event -> switchMode(!demoMode));
+        VBox demoControls = new VBox(10, label("PRESENT & EXPLORE", "nav-caption"), demoButton);
+        demoControls.setPadding(new Insets(24, 0, 0, 0));
+        CheckBox reduceMotion = new CheckBox("Reduce motion");
+        reduceMotion.setId("reduce-motion");
+        reduceMotion.selectedProperty().bindBidirectional(motion.reducedMotionProperty());
+        reduceMotion.setTooltip(new Tooltip("Turn off decorative movement and fades for this session"));
+        reduceMotion.setOnAction(event -> setStatus(reduceMotion.isSelected()
+                ? "Reduced motion enabled. Actions still work immediately."
+                : "Motion enabled. Gentle transitions are back.", false));
+        VBox preferences = new VBox(10, reduceMotion,
+                label("Ctrl+F  Search\nAlt+1–4  Switch views", "shortcut-hint"));
+        preferences.getStyleClass().add("sidebar-preferences");
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
@@ -135,7 +198,7 @@ public final class LedgerDesktopApp extends Application {
         VBox footer = new VBox(8, label("POTARA FUSION GEAR", "sidebar-small-title"), footerCopy,
                 label("PC accessories + upgrades", "sidebar-copy"));
         footer.getStyleClass().add("sidebar-footer");
-        VBox sidebar = new VBox(12, brand, links, partnerLinks, spacer, footer);
+        VBox sidebar = new VBox(12, brand, links, partnerLinks, demoControls, spacer, preferences, footer);
         sidebar.getStyleClass().add("sidebar");
         sidebar.setPrefWidth(228);
         sidebar.setMinWidth(228);
@@ -154,12 +217,16 @@ public final class LedgerDesktopApp extends Application {
         Button button = button(text, "nav-button");
         button.setMaxWidth(Double.MAX_VALUE);
         button.setOnAction(event -> navigate(view, button));
+        button.setTooltip(new Tooltip(text + "  •  Alt+" + (navigation.size() + 1)));
         navigation.add(button);
         return button;
     }
 
     private HBox buildHeader() {
         VBox heading = new VBox(7, label("POTARA FUSION GEAR  /  FINANCE", "eyebrow"), pageTitle, pageSubtitle);
+        heading.setMinWidth(0);
+        pageTitle.setWrapText(true);
+        pageSubtitle.setWrapText(true);
         HBox.setHgrow(heading, Priority.ALWAYS);
         Button refresh = button("Refresh", "secondary-button");
         refresh.setTooltip(new Tooltip("Reload saved transactions from the CSV file"));
@@ -172,7 +239,24 @@ public final class LedgerDesktopApp extends Application {
         actions.setAlignment(Pos.CENTER_RIGHT);
         HBox header = new HBox(15, heading, actions);
         header.setAlignment(Pos.CENTER_LEFT);
+        header.getStyleClass().add("workspace-header");
         return header;
+    }
+
+    private void installShortcuts(Scene scene) {
+        scene.getAccelerators().put(new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN), () -> {
+            if (workspaceScroll != null) workspaceScroll.setVvalue(0);
+            search.requestFocus();
+            search.selectAll();
+        });
+        KeyCode[] keys = {KeyCode.DIGIT1, KeyCode.DIGIT2, KeyCode.DIGIT3, KeyCode.DIGIT4};
+        for (int i = 0; i < keys.length; i++) {
+            Button destination = navigation.get(i);
+            scene.getAccelerators().put(new KeyCodeCombination(keys[i], KeyCombination.ALT_DOWN), () -> {
+                destination.fire();
+                destination.requestFocus();
+            });
+        }
     }
 
     private VBox buildMetrics() {
@@ -280,6 +364,7 @@ public final class LedgerDesktopApp extends Application {
         allTypes.setToggleGroup(types);
         allTypes.setUserData("all");
         allTypes.setSelected(true);
+        motion.install(allTypes);
         types.selectedToggleProperty().addListener((observable, oldValue, newValue) -> {
             if (newValue == null) {
                 // Wait until ToggleGroup finishes clearing its current selection.
@@ -305,9 +390,22 @@ public final class LedgerDesktopApp extends Application {
         Button detail = button("View selected entry", "text-button");
         detail.disableProperty().bind(table.getSelectionModel().selectedItemProperty().isNull());
         detail.setOnAction(event -> showDetails(table.getSelectionModel().getSelectedItem()));
-        footer.getChildren().addAll(gap, detail);
+        exportButton.setOnAction(event -> exportReport());
+        openReportButton.setVisible(false);
+        openReportButton.setManaged(false);
+        openReportButton.setOnAction(event -> {
+            if (lastExport != null && Files.isRegularFile(lastExport)) {
+                getHostServices().showDocument(lastExport.toUri().toString());
+            } else {
+                setStatus("That report has been moved or removed. Export it again.", true);
+            }
+        });
+        footer.getChildren().addAll(gap, detail, exportButton);
         footer.setAlignment(Pos.CENTER_LEFT);
-        VBox panel = new VBox(15, heading, toolbar, advanced, filterError, table, footer);
+        chartPanel = new TitledPane("Cash flow by month", cashFlow);
+        chartPanel.setAnimated(false);
+        chartPanel.getStyleClass().add("chart-panel");
+        VBox panel = new VBox(15, heading, toolbar, advanced, filterError, chartPanel, table, footer, openReportButton);
         panel.getStyleClass().add("ledger-panel");
         return panel;
     }
@@ -316,6 +414,7 @@ public final class LedgerDesktopApp extends Application {
         ToggleButton button = new ToggleButton(title);
         button.setToggleGroup(types);
         button.setUserData(value);
+        motion.install(button);
         return button;
     }
 
@@ -440,10 +539,10 @@ public final class LedgerDesktopApp extends Application {
     }
 
     private HBox buildStatusBar() {
-        Circle dot = new Circle(4, Color.web("#b9e88a"));
-        Region space = new Region();
-        HBox.setHgrow(space, Priority.ALWAYS);
-        HBox bar = new HBox(10, dot, status, space, fileStatus);
+        status.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(status, Priority.ALWAYS);
+        fileStatus.setMinWidth(Region.USE_PREF_SIZE);
+        HBox bar = new HBox(10, statusDot, status, fileStatus);
         bar.setAlignment(Pos.CENTER_LEFT);
         bar.getStyleClass().add("status-bar");
         fileStatus.setTooltip(new Tooltip(files.getFilePath().toString()));
@@ -458,6 +557,8 @@ public final class LedgerDesktopApp extends Application {
         button.getStyleClass().add("nav-selected");
         resetFilterValues();
         boolean overview = view.equals("overview");
+        // Keep the overview visual; put the records first when doing ledger work.
+        if (chartPanel != null) chartPanel.setExpanded(overview);
         gearSection.setVisible(overview);
         gearSection.setManaged(overview);
         showAdvanced(view.equals("reports") || view.equals("partner"));
@@ -484,12 +585,16 @@ public final class LedgerDesktopApp extends Application {
         }
         applyFilters();
         setStatus(button.getText() + " opened.", false);
+        // Navigation takes effect immediately; motion never controls application state.
+        if (workspaceScroll != null) workspaceScroll.setVvalue(0);
+        if (workspace != null) motion.reveal(workspace);
     }
 
     private void showAdvanced(boolean show) {
         advanced.setVisible(show);
         advanced.setManaged(show);
         advancedButton.setText(show ? "Hide advanced filters" : "Advanced filters");
+        if (show) motion.reveal(advanced);
     }
 
     private void resetFilterValues() {
@@ -535,6 +640,8 @@ public final class LedgerDesktopApp extends Application {
                     || (exactVendor.isSelected() && !vendor.getText().isBlank()
                     && !entry.getVendor().equalsIgnoreCase(vendor.getText().trim())));
             visible.setAll(matches);
+            cashFlow.update(matches);
+            appliedFilterSummary = describeFilters(first, last, exactAmount, type);
             deposits.setText(formatMoney(ledger.getTotalDeposits(matches)));
             payments.setText(formatMoney(ledger.getTotalPayments(matches)));
             netChange.setText(formatMoney(ledger.getNetChange(matches)));
@@ -542,7 +649,7 @@ public final class LedgerDesktopApp extends Application {
                     || !description.getText().isBlank() || !vendor.getText().isBlank() || exactAmount != null;
             scope.setText(period.getValue() + (filtered ? "  /  Filtered view" : "  /  Overview"));
             resultCount.setText(matches.size() + " of " + ledger.getAll().size() + " transactions  •  Newest first");
-            fileStatus.setText("Saved locally  •  " + ledger.getAll().size() + " records");
+            fileStatus.setText((demoMode ? "DEMO ledger" : "Your ledger") + "  •  " + ledger.getAll().size() + " records");
             filterError.setVisible(false);
             filterError.setManaged(false);
             return true;
@@ -553,6 +660,173 @@ public final class LedgerDesktopApp extends Application {
             setStatus("Check the highlighted filter message.", true);
             return false;
         }
+    }
+
+    private void buildModeBanner() {
+        Label title = label("DEMO MODE • Fictional transactions", "demo-title");
+        Label detail = label("Practice freely. Demo changes are saved separately from your ledger.", "muted");
+        detail.setWrapText(true);
+        VBox text = new VBox(4, title, detail);
+        HBox.setHgrow(text, Priority.ALWAYS);
+        Button reset = button("Reset demo", "secondary-button");
+        reset.setOnAction(event -> resetDemo());
+        Button leave = button("Back to my ledger", "secondary-button");
+        leave.setOnAction(event -> switchMode(false));
+        modeBanner.getChildren().setAll(text, reset, leave);
+        modeBanner.setAlignment(Pos.CENTER_LEFT);
+        modeBanner.getStyleClass().add("demo-banner");
+    }
+
+    private void switchMode(boolean useDemo) {
+        if (useDemo == demoMode) return;
+        try {
+            DemoData.validateSeparateFrom(normalFile);
+            FileManager candidate = useDemo ? DemoData.open() : new FileManager(normalFile);
+            LedgerService candidateLedger = new LedgerService(candidate);
+            // Change the screen only after the other ledger has loaded successfully.
+            files = candidate;
+            ledger = candidateLedger;
+            demoMode = useDemo;
+            updateModeAppearance();
+            navigate("overview", navigation.get(0));
+            setStatus(useDemo ? "Presentation mode ready. Changes affect the demo ledger only."
+                    : "Welcome back. Your own ledger is loaded.", false);
+        } catch (IOException | IllegalArgumentException ex) {
+            setStatus("Could not switch ledgers. " + ex.getMessage(), true);
+        }
+    }
+
+    private void resetDemo() {
+        if (!demoMode) return;
+        if (!confirm("Reset the demo ledger?", "This replaces the demo transactions with the fictional starter history, "
+                + "using dates relative to today. Your own ledger will not change.", "Reset demo")) {
+            setStatus("Reset cancelled. Your demo transactions are unchanged.", false);
+            return;
+        }
+        try {
+            DemoData.validateSeparateFrom(normalFile);
+            DemoData.reset(files);
+            ledger = new LedgerService(files);
+            navigate("overview", navigation.get(0));
+            setStatus("Demo reset. The starter transactions are ready for your presentation.", false);
+        } catch (IOException | IllegalArgumentException ex) {
+            setStatus("Demo reset failed. " + ex.getMessage(), true);
+        }
+    }
+
+    private void updateModeAppearance() {
+        modeBanner.setVisible(demoMode);
+        modeBanner.setManaged(demoMode);
+        demoButton.setText(demoMode ? "Back to my ledger" : "Presentation mode");
+        window.setTitle((demoMode ? "[DEMO] " : "") + "Potara Fusion Ledger | Potara Fusion Gear");
+        fileStatus.setTooltip(new Tooltip(files.getFilePath().toString()));
+    }
+
+    private boolean confirm(String heading, String message, String action) {
+        ButtonType proceed = new ButtonType(action, ButtonBar.ButtonData.OK_DONE);
+        Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION, message, proceed, ButtonType.CANCEL);
+        confirmation.initOwner(window);
+        confirmation.setTitle("Potara Fusion Ledger");
+        confirmation.setHeaderText(heading);
+        confirmation.getDialogPane().getStylesheets().add(getClass().getResource(STYLE).toExternalForm());
+        confirmation.getDialogPane().lookupButton(ButtonType.CANCEL).getStyleClass().add("secondary-button");
+        for (ButtonType type : confirmation.getButtonTypes()) {
+            motion.install((ButtonBase) confirmation.getDialogPane().lookupButton(type));
+        }
+        return confirmation.showAndWait().orElse(ButtonType.CANCEL) == proceed;
+    }
+
+    private String describeFilters(LocalDate first, LocalDate last, BigDecimal exactAmount, String type) {
+        List<String> parts = new ArrayList<>();
+        parts.add("Period: " + period.getValue());
+        parts.add("Type: " + switch (type) { case "deposit" -> "Deposits"; case "payment" -> "Payments"; default -> "All entries"; });
+        if (!search.getText().isBlank()) parts.add("Description or vendor contains: " + search.getText().trim());
+        if (first != null) parts.add("Start date (inclusive): " + first);
+        if (last != null) parts.add("End date (inclusive): " + last);
+        if (!description.getText().isBlank()) parts.add("Description contains: " + description.getText().trim());
+        if (!vendor.getText().isBlank()) parts.add("Vendor " + (exactVendor.isSelected() ? "equals: " : "contains: ") + vendor.getText().trim());
+        if (exactAmount != null) parts.add("Signed amount: " + exactAmount.toPlainString());
+        return String.join(" | ", parts);
+    }
+
+    private void exportReport() {
+        if (!applyFilters()) return;
+        List<Transaction> snapshot = List.copyOf(visible);
+        String filterSummary = appliedFilterSummary;
+        boolean exportedDemo = demoMode;
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save your Potara ledger report");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF report (*.pdf)", "*.pdf"));
+        chooser.setInitialFileName((demoMode ? "Potara-Demo-" : "Potara-Ledger-")
+                + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss")) + ".pdf");
+        File selected = chooser.showSaveDialog(window);
+        if (selected == null) {
+            setStatus("Export cancelled. No report was saved.", false);
+            return;
+        }
+        Path target = selected.toPath().toAbsolutePath().normalize();
+        if (!target.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".pdf")) {
+            target = target.resolveSibling(target.getFileName() + ".pdf");
+            if (Files.exists(target) && !confirm("Replace this PDF?", target.toString(), "Replace report")) {
+                setStatus("Export cancelled. The existing report is unchanged.", false);
+                return;
+            }
+        }
+        try {
+            for (Path protectedFile : List.of(normalFile, files.getFilePath(), DemoData.getFilePath())) {
+                if (target.equals(protectedFile) || (Files.exists(target) && Files.exists(protectedFile)
+                        && Files.isSameFile(target, protectedFile))) {
+                    setStatus("Choose a different report filename. A report cannot replace a ledger file.", true);
+                    return;
+                }
+            }
+        } catch (IOException ex) {
+            setStatus("Could not check the destination. " + ex.getMessage(), true);
+            return;
+        }
+        final Path destination = target;
+        exportButton.setDisable(true);
+        exportButton.setText("Exporting…");
+        ProgressIndicator progress = new ProgressIndicator();
+        progress.setMinSize(16, 16);
+        progress.setPrefSize(16, 16);
+        progress.setMaxSize(16, 16);
+        // With reduced motion, show a stationary ring beside the explicit busy text.
+        progress.progressProperty().bind(Bindings.when(motion.reducedMotionProperty()).then(0.0).otherwise(-1.0));
+        exportButton.setGraphic(progress);
+        setStatus("Creating your report for " + snapshot.size() + " displayed transactions…", false);
+        Task<Void> export = new Task<>() {
+            @Override protected Void call() throws IOException {
+                ReportExporter.export(destination, snapshot, filterSummary, exportedDemo);
+                return null;
+            }
+        };
+        export.setOnSucceeded(event -> {
+            finishExport();
+            lastExport = destination;
+            openReportButton.setVisible(true);
+            openReportButton.setManaged(true);
+            openReportButton.setTooltip(new Tooltip(destination.toString()));
+            motion.feedback(openReportButton);
+            setStatus((exportedDemo ? "Demo report" : "Report") + " saved: " + destination
+                    + " (" + snapshot.size() + " transactions).", false);
+        });
+        export.setOnFailed(event -> {
+            finishExport();
+            setStatus("Report was not saved. " + export.getException().getMessage(), true);
+        });
+        // Finish an in-progress file write even if the user closes the window.
+        new Thread(export, "potara-report-export").start();
+    }
+
+    private void finishExport() {
+        exportButton.setDisable(false);
+        exportButton.setText("Export PDF report");
+        if (exportButton.getGraphic() instanceof ProgressIndicator progress) {
+            progress.progressProperty().unbind();
+            progress.setProgress(0);
+        }
+        exportButton.setGraphic(null);
     }
 
     private BigDecimal readAmountFilter() {
@@ -600,7 +874,7 @@ public final class LedgerDesktopApp extends Application {
     }
 
     private void addTransaction(boolean deposit) {
-        if (TransactionDialog.show(window, deposit, ledger::addTransaction)) {
+        if (TransactionDialog.show(window, deposit, ledger::addTransaction, motion)) {
             navigate("transactions", navigation.get(1));
             setStatus((deposit ? "Deposit" : "Payment") + " saved. Your ledger is up to date.", false);
         }
@@ -647,6 +921,8 @@ public final class LedgerDesktopApp extends Application {
         content.setPrefWidth(480);
         dialog.getDialogPane().setContent(content);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        motion.install((ButtonBase) dialog.getDialogPane().lookupButton(ButtonType.CLOSE));
+        dialog.setOnShown(event -> motion.reveal(content));
         dialog.showAndWait();
     }
 
@@ -657,6 +933,8 @@ public final class LedgerDesktopApp extends Application {
             status.getStyleClass().add("negative");
         }
         status.setTooltip(new Tooltip(message));
+        statusDot.setFill(Color.web(error ? "#efaaa4" : "#b9e88a"));
+        motion.feedback(status);
     }
 
     private static String formatMoney(BigDecimal value) {
@@ -669,9 +947,10 @@ public final class LedgerDesktopApp extends Application {
         return label;
     }
 
-    private static Button button(String text, String style) {
+    private Button button(String text, String style) {
         Button button = new Button(text);
         button.getStyleClass().add(style);
+        motion.install(button);
         return button;
     }
 }

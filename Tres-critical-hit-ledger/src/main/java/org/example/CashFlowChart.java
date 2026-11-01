@@ -61,6 +61,7 @@ public final class CashFlowChart extends VBox {
                 double number = value.doubleValue();
                 if (Math.abs(number) >= 1_000_000) return String.format(Locale.US, "$%.1fm", number / 1_000_000);
                 if (Math.abs(number) >= 1_000) return String.format(Locale.US, "$%.1fk", number / 1_000);
+                if (dollars.getUpperBound() <= 10) return String.format(Locale.US, "$%.2f", number);
                 return String.format(Locale.US, "$%.0f", number);
             }
             @Override public Number fromString(String text) { return 0; }
@@ -124,6 +125,7 @@ public final class CashFlowChart extends VBox {
         Tooltip tooltip = new Tooltip(detail);
         tooltip.setShowDelay(Duration.millis(100));
         Tooltip.install(node, tooltip);
-        node.setAccessibleText(detail);
+        // JavaFX already binds a bar's accessible text to its series and values.
+        node.setAccessibleHelp(detail);
     }
 }

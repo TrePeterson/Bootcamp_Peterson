@@ -24,6 +24,12 @@ Transactions are saved locally, so the ledger is ready when you reopen the appli
 - **Use a polished console interface:** colored tables, aligned dollar amounts, wrapped descriptions, clear prompts, cancellation, and saved/not-saved messages.
 - **Choose the desktop interface:** a JavaFX dashboard with transaction totals, a searchable table, calendar reports, advanced filters, and deposit/payment forms that require review before saving.
 - **Explore connected transactions:** click a keyboard, mouse, or headset illustration to filter transaction text, or open the Potara Customs view to match that vendor exactly.
+- **See monthly cash flow:** a collapsible bar chart follows the same filters as the table. Hover a bar for its exact dollar amount; scroll sideways when more months are shown.
+- **Export a PDF report:** save the displayed transactions with active filters, date range, totals, and page numbers. Open the saved report directly from the app.
+- **Practice in presentation mode:** work with a separate, persistent demo ledger. A visible DEMO banner identifies the mode, and a confirmed reset restores fictional starter data with dates relative to today.
+- **Launch from Windows:** a portable application includes its Java runtime and Potara icon, so users can open it without IntelliJ or Maven.
+- **Move comfortably through the app:** short view transitions, responsive buttons, and clear save/export feedback. Turn on **Reduce motion** in the sidebar to stop decorative animation immediately.
+- **Use the keyboard:** **Ctrl+F** focuses search; **Alt+1–4** opens Overview, Transactions, Reports & search, and Potara Customs. Tab moves through controls, with visible focus outlines.
 
 ## Technology
 
@@ -33,6 +39,8 @@ Transactions are saved locally, so the ledger is ready when you reopen the appli
 | Maven | Build configuration and dependencies |
 | JavaFX 17.0.18 | Optional desktop interface, tables, forms, and dialogs |
 | JavaFX Maven Plugin 0.0.8 | Starts the desktop application with its JavaFX runtime |
+| Apache PDFBox 3.0.8 | Creates branded, paginated PDF reports with embedded fonts |
+| JDK 17 `jpackage` / `jlink` | Builds the Windows launcher and included Java runtime |
 | ASCII Table 0.3.2 | Table layout and text wrapping |
 | `BigDecimal` | Exact dollar-and-cent calculations |
 | `LocalDate` and `LocalTime` | Dates, times, and calendar reports |
@@ -64,6 +72,26 @@ mvn javafx:run
 In IntelliJ, you can also open the **Maven** tool window, expand **Plugins > javafx**, and double-click **javafx:run**. Reload the Maven project if the plugin is not listed. This launches `DesktopLauncher`, which starts `LedgerDesktopApp`; JavaFX is downloaded through Maven and is not bundled into Corretto itself.
 
 Both interfaces use the same `transactions.csv` and the same transaction, reporting, and file-saving classes. If the selected file does not exist, it creates an empty ledger with the required header. Use one writing instance at a time: close the console before recording transactions in the desktop app, or vice versa.
+
+### Run the Windows application
+
+Double-click the **Potara Fusion Ledger** desktop shortcut created for this development setup. It opens the existing project ledger. The latest portable application is in `target/windows-motion-final/Potara Fusion Ledger`; keep that entire folder together, including `app` and `runtime`. Earlier builds are preserved separately.
+
+Launching the `.exe` directly defaults to `%LOCALAPPDATA%/PotaraFusionLedger/transactions.csv`, starting empty if needed. The desktop shortcut explicitly selects this project's CSV. No personal ledger is bundled in the portable application. See [Windows launcher](docs/WINDOWS_LAUNCHER.md) for build steps, custom data paths, and distribution details.
+
+### Present, filter, and export
+
+1. Select **Presentation mode** in the sidebar. The purple DEMO banner confirms that you are using fictional records in a separate file.
+2. Choose **Reset demo** before a presentation if you want the original demo records back. Review the confirmation; resetting does not change your normal ledger.
+3. Try **Month to date**, a description search, or the **Potara Customs** view. The table, totals, and cash-flow chart all reflect the same matching records.
+4. Select **Export PDF report** below the table. Choose a filename and wait for the saved confirmation, then select **Open saved report**. Demo exports are clearly marked.
+5. Select **Back to my ledger** to reload your own records.
+
+The chart shows months that contain matching transactions, ordered oldest to newest. Empty months are omitted; an empty result shows an explanation instead of bars. Exact sums use `BigDecimal`; conversion to chart coordinates happens only after summing. The PDF captures the displayed rows and filters when export starts, even if you subsequently change the view. Invalid filter input must be corrected before export.
+
+Demo edits survive closing the app. The separate demo file is `%LOCALAPPDATA%/PotaraFusionLedger/demo/transactions.csv` on Windows. First creation and an explicit reset refresh the sample dates; simply reopening an existing demo preserves it. The application refuses a demo path that points to the normal ledger.
+
+Overview opens the cash-flow chart; the other views initially collapse it so transaction rows are easier to reach. Select **Cash flow by month** to reopen it. Switching views returns the workspace to the top. **Reduce motion** applies to navigation, buttons, dialogs, status fades, and the export indicator. It lasts for the current session; the VM option below can make reduced motion the startup default.
 
 To compile and package from the project root with Maven installed:
 
@@ -151,8 +179,12 @@ Tres-critical-hit-ledger/
 ├── pom.xml
 ├── README.md
 ├── transactions.csv
+├── packaging/build-windows.ps1
 ├── docs/
-│   └── ASSET_PROMPTS.md
+│   ├── ASSET_PROMPTS.md
+│   ├── WINDOWS_LAUNCHER.md
+│   ├── VERIFICATION.md
+│   └── PRESENTATION_NOTES.md
 └── src/main/
     ├── java/org/example/
     │   ├── Main.java
@@ -160,15 +192,20 @@ Tres-critical-hit-ledger/
     │   ├── DesktopLauncher.java
     │   ├── LedgerDesktopApp.java
     │   ├── TransactionDialog.java
+    │   ├── UiMotion.java
+    │   ├── CashFlowChart.java
+    │   ├── DemoData.java
+    │   ├── ReportExporter.java
     │   ├── Transaction.java
     │   ├── LedgerService.java
     │   └── FileManager.java
-    └── resources/org/example/desktop/
-        ├── potara.css
-        └── images/
-            ├── keyboard.png
-            ├── mouse.png
-            └── headset.png
+    └── resources/org/example/
+        ├── desktop/
+        │   ├── potara.css
+        │   ├── demo-transactions.csv
+        │   ├── icons/ (SVG, PNG sizes, Windows ICO)
+        │   └── images/ (keyboard, mouse, headset)
+        └── pdf/ (Noto Sans fonts and SIL license)
 ```
 
 | Class | Responsibility |
@@ -178,11 +215,15 @@ Tres-critical-hit-ledger/
 | `DesktopLauncher` | Starts the optional JavaFX desktop application. |
 | `LedgerDesktopApp` | Builds the dashboard, table, filters, navigation, and transaction-detail view. |
 | `TransactionDialog` | Collects deposit/payment details, validates input, requests confirmation, and calls the existing save operation. |
+| `UiMotion` | Adds brief visual transitions, cancels interrupted animations, and applies reduced motion without changing business actions. |
+| `CashFlowChart` | Groups matching transactions by month and draws deposits and payments with exact-value tooltips. |
+| `DemoData` | Initializes and resets an isolated fictional ledger while protecting the normal file. |
+| `ReportExporter` | Creates an immutable report snapshot, paginates it, and safely writes a PDF. |
 | `Transaction` | Represents one deposit or payment, validates its fields, and formats its CSV record. |
 | `LedgerService` | Sorts and filters transactions, calculates totals, and coordinates saving. |
 | `FileManager` | Loads and validates the CSV file and writes updated transaction history. |
 
-There are **eight Java classes**. `Main` and `ConsoleHelper` handle the console; `DesktopLauncher`, `LedgerDesktopApp`, and `TransactionDialog` handle the desktop interface. Both front ends use `Transaction`, `LedgerService`, and `FileManager` for the same rules and saved data. In simple terms, the front end is what the user sees and clicks or types into; the back end checks, searches, totals, and saves the records.
+There are **twelve top-level Java classes**. `Main` and `ConsoleHelper` handle the console; `DesktopLauncher`, `LedgerDesktopApp`, `TransactionDialog`, `CashFlowChart`, and `UiMotion` handle the desktop interface. `DemoData` manages presentation data and `ReportExporter` creates reports. Both front ends use `Transaction`, `LedgerService`, and `FileManager` for the same rules and saved data. In simple terms, the front end is what the user sees and clicks or types into; the back end checks, searches, totals, and saves the records.
 
 Desktop colors and layout are defined in `potara.css`. The three PNG illustrations are packaged resources. Their prompts and provenance are documented in [Asset prompts](docs/ASSET_PROMPTS.md).
 
@@ -193,6 +234,8 @@ The desktop window uses a custom Potara-inspired icon: paired green gemstones an
 **Exact money calculations:** `BigDecimal` avoids binary floating-point rounding problems when adding and subtracting money.
 
 **Clear feedback:** a preview and confirmation precede each save. The application reports success only after the file save completes. Invalid input prompts the user to try again.
+
+**Purposeful motion:** a view settles into place over 200 milliseconds; buttons respond to hover, keyboard focus, and pressing. New actions cancel outdated transitions instead of queuing them. Totals, filters, and saves never wait for an animation. Reduced motion immediately restores normal position, scale, and opacity. The export task runs in the background, with busy text and a progress indicator until it finishes.
 
 **Safer file updates:** saves write a temporary file and then request an atomic replacement. The in-memory ledger updates only after saving succeeds. Malformed files stop loading with an error instead of silently discarding records; detected outside edits prevent a save until the ledger is reloaded with desktop **Refresh** or the application is restarted.
 
@@ -208,6 +251,8 @@ Add these as **VM options** in IntelliJ's run configuration:
 |---|---|
 | `-Dledger.color=false` | Turns off ANSI colors for plain console output. |
 | `-Dledger.file=path/to/transactions.csv` | Selects a different ledger file. Relative paths use the working directory. |
+| `-Dledger.demo.file=path/to/demo.csv` | Selects a separate presentation ledger when supplied directly to the Java launcher. It must not point to the normal ledger. |
+| `-Dledger.reduceMotion=true` | Starts the desktop app with decorative motion disabled when supplied directly to the Java launcher. The sidebar toggle can change it during the session. |
 
 For the desktop Maven launch, pass the data-file property directly:
 
@@ -232,13 +277,23 @@ Development checks for the console and shared ledger classes also covered calend
 
 The JavaFX implementation was compiled and launched on Amazon Corretto 17. Separate development checks covered 37 transaction-form validation cases and 63 controller/filter cases, including date-entry handling, combined filters, calendar reports, toggle selection, refresh behavior, and outside-edit detection. Those checks used copied data files; the project ledger was preserved. The dashboard and Potara Customs view were also inspected in the native desktop window.
 
+The desktop upgrades were checked with 69 isolated demo-storage cases, 79 chart/mode/export integration assertions with JavaFX exception monitoring, and 10 launcher-configuration checks. The existing 63 controller checks were rerun successfully. PDF checks covered empty results, Unicode, long fields, exact totals, and a ten-page report; all 13 pages across three fixtures were rendered and visually inspected. The updated chart dashboard and demo banner were also viewed in the native application. These development harnesses were run separately from Maven's build.
+
+The packaged Windows executable was smoke-tested against a separate empty ledger. Its embedded runtime loaded the JavaFX rendering, window, and font native libraries successfully. The packaged JAR was checked for the fictional demo seed and PDF fonts, and the real project ledger was verified unchanged.
+
+The motion update passed 111 helper checks and 103 controller integration checks covering rapid input, immediate navigation, keyboard shortcuts, reduced-motion cancellation, and lifecycle cleanup. The existing 63 filter/controller and 79 chart/demo/export checks also passed with JavaFX error monitoring. The refreshed dashboard and keyboard navigation were inspected in the native window. Layout checks at 1100×760 and 1440×960 confirmed that controls fit and the sidebar can scroll to keep its footer reachable. The newer Windows package passed an additional no-window runtime smoke check; its compiled UI, motion helper, CSS, and icon were verified against the current build.
+
 For a desktop walkthrough, start it with the separate data file above, add the same deposit/payment pair, inspect the review dialogs, combine filters, open an entry's details, and restart to check persistence. Try the hardware cards against the supplied fictional sample history, where relevant descriptions are present.
+
+The [verification checklist](docs/VERIFICATION.md) maps requirements and desktop features to repeatable manual checks and expected results. The [presentation notes](docs/PRESENTATION_NOTES.md) suggest a short live demonstration and prompts for discussing actual challenges, tradeoffs, and lessons learned. A polished interface supports the rubric, but repository accessibility, genuine development history, project tracking, and the presentation also need their own evidence.
 
 ## Current Scope
 
 This is a single-user application backed by a local file. Run one instance per ledger; outside-edit detection is not a multi-user database lock. Saving requires filesystem support for atomic replacement.
 
 The displayed net change is deposits minus payments in the selected records. It is not a bank account balance. Bank connections, transaction editing/deletion, authentication, and automatic backups are outside the current feature set.
+
+PDF reports require a local destination that supports atomic replacement. Noto Sans preserves supported Unicode text; unsupported glyphs are printed as visible `[U+XXXX]` codes with an explanatory footer. The Windows application is a portable folder, not a signed installer, and must be rebuilt after source changes.
 
 ## Credits
 
@@ -249,5 +304,7 @@ Created by **Tre Peterson** for the Java Focus Academy Accounting Ledger capston
 Tables use [ASCII Table by Sven van der Meer](https://github.com/vdmeer/asciitable), version 0.3.2, distributed under the Apache License 2.0. The presentation takes inspiration from Dragon Ball's Potara theme. Potara Fusion Gear and its connection with Potara Customs provide the business theme for the fictional demonstration transactions.
 
 The desktop interface uses [OpenJFX / JavaFX](https://openjfx.io/openjfx-docs/) and its Maven runtime configuration.
+
+PDF reports use [Apache PDFBox](https://pdfbox.apache.org/), distributed under Apache License 2.0. The embedded Noto Sans fonts are distributed under the [SIL Open Font License](src/main/resources/org/example/pdf/OFL.txt).
 
 The keyboard, mouse, and headset illustrations were created with the built-in OpenAI image-generation tool. They are illustrative hardware artwork, not photographs of actual products or a real product catalog. See [Asset prompts](docs/ASSET_PROMPTS.md) for the exact prompts and links to the included images.
