@@ -52,6 +52,10 @@ public final class TransactionDialog {
     }
 
     public static boolean show(Window owner, boolean deposit, TransactionSaver saver) {
+        return show(owner, deposit, saver, null);
+    }
+
+    public static boolean show(Window owner, boolean deposit, TransactionSaver saver, UiMotion motion) {
         Objects.requireNonNull(saver, "A transaction saver is required.");
         String transactionType = deposit ? "deposit" : "payment";
         Dialog<Boolean> dialog = new Dialog<>();
@@ -122,6 +126,10 @@ public final class TransactionDialog {
         Button cancelButton = (Button) pane.lookupButton(ButtonType.CANCEL);
         cancelButton.getStyleClass().add("secondary-button");
         cancelButton.setCancelButton(true);
+        if (motion != null) {
+            motion.install(reviewButton);
+            motion.install(cancelButton);
+        }
 
         // Validate the date's typed text before DatePicker can replace an invalid edit.
         date.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
@@ -150,7 +158,7 @@ public final class TransactionDialog {
             }
 
             Window dialogWindow = pane.getScene().getWindow();
-            if (!confirm(dialogWindow, transaction, transactionType)) {
+            if (!confirm(dialogWindow, transaction, transactionType, motion)) {
                 event.consume();
                 return;
             }
@@ -167,7 +175,10 @@ public final class TransactionDialog {
 
         // The review action reaches this converter only after saving successfully.
         dialog.setResultConverter(button -> button == reviewType);
-        dialog.setOnShown(event -> Platform.runLater(description::requestFocus));
+        dialog.setOnShown(event -> {
+            if (motion != null) motion.reveal(content);
+            Platform.runLater(description::requestFocus);
+        });
         return dialog.showAndWait().orElse(false);
     }
 
@@ -262,7 +273,8 @@ public final class TransactionDialog {
         }
     }
 
-    private static boolean confirm(Window owner, Transaction transaction, String transactionType) {
+    private static boolean confirm(Window owner, Transaction transaction,
+                                   String transactionType, UiMotion motion) {
         ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         ButtonType backType = new ButtonType("Back", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION, "", saveType, backType);
@@ -285,8 +297,15 @@ public final class TransactionDialog {
         pane.setContent(summary);
         pane.setPrefWidth(540);
         styleDialog(pane);
-        pane.lookupButton(saveType).getStyleClass().add("primary-button");
-        pane.lookupButton(backType).getStyleClass().add("secondary-button");
+        Button saveButton = (Button) pane.lookupButton(saveType);
+        Button backButton = (Button) pane.lookupButton(backType);
+        saveButton.getStyleClass().add("primary-button");
+        backButton.getStyleClass().add("secondary-button");
+        if (motion != null) {
+            motion.install(saveButton);
+            motion.install(backButton);
+            confirmation.setOnShown(event -> motion.reveal(summary));
+        }
         return confirmation.showAndWait().filter(saveType::equals).isPresent();
     }
 
