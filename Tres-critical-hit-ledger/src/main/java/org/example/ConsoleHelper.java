@@ -15,6 +15,7 @@ import java.util.Locale;
 /** Shared display tools. This class formats output; it never saves or changes transactions. */
 public final class ConsoleHelper {
     private static final String DIVIDER = "=".repeat(104);
+    private static final int BOX_CONTENT_WIDTH = 62;
     private static final boolean USE_COLOR = Boolean.parseBoolean(
             System.getProperty("ledger.color", "true"));
     private static final String RESET = "\u001B[0m";
@@ -42,7 +43,49 @@ public final class ConsoleHelper {
     }
 
     public static void prompt(String message) {
-        System.out.print(color(GREEN, message));
+        printBox(null, List.of(message.strip()));
+        // IntelliJ's Run console accepts typing on the next line without cursor-control codes.
+        System.out.print(color(GREEN, "  > "));
+        System.out.flush();
+    }
+
+    public static void printMenu(String title, String... options) {
+        printBox(title, List.of(options));
+    }
+
+    private static void printBox(String title, List<String> lines) {
+        String border = "+" + "=".repeat(BOX_CONTENT_WIDTH + 2) + "+";
+        System.out.println();
+        System.out.println(color(GOLD, border));
+        if (title != null) {
+            printBoxText(title, BOLD + GREEN);
+            System.out.println(color(GOLD, "+" + "-".repeat(BOX_CONTENT_WIDTH + 2) + "+"));
+        }
+        for (String line : lines) {
+            printBoxText(line, GREEN);
+        }
+        System.out.println(color(GOLD, border));
+    }
+
+    private static void printBoxText(String text, String shade) {
+        // Wrap before adding ANSI colors so invisible codes never affect border alignment.
+        for (String paragraph : text.split("\\R", -1)) {
+            String remaining = paragraph.strip();
+            while (remaining.length() > BOX_CONTENT_WIDTH) {
+                int split = remaining.lastIndexOf(' ', BOX_CONTENT_WIDTH);
+                if (split <= 0) {
+                    split = BOX_CONTENT_WIDTH;
+                }
+                printBoxRow(remaining.substring(0, split), shade);
+                remaining = remaining.substring(split).stripLeading();
+            }
+            printBoxRow(remaining, shade);
+        }
+    }
+
+    private static void printBoxRow(String text, String shade) {
+        String padded = text + " ".repeat(BOX_CONTENT_WIDTH - text.length());
+        System.out.println(color(GOLD, "| ") + color(shade, padded) + color(GOLD, " |"));
     }
 
     public static void printHeader(String title) {
