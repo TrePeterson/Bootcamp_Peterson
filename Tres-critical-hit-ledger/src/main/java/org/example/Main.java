@@ -53,10 +53,11 @@ public class Main {
             List<Transaction> entries = ledger.getAll();
             System.out.println("Recorded transactions: " + entries.size()
                     + " | Recorded net change: " + ConsoleHelper.money(ledger.getNetChange(entries)));
-            System.out.println("D) Add deposit");
-            System.out.println("P) Make payment");
-            System.out.println("L) View ledger and reports");
-            System.out.println("X) Exit");
+            ConsoleHelper.printMenu("HOME MENU",
+                    "D) Add deposit",
+                    "P) Make payment",
+                    "L) View ledger and reports",
+                    "X) Exit");
 
             String choice = readLine(scanner, "Your choice: ");
             if (choice == null) {
@@ -76,11 +77,12 @@ public class Main {
     private static void runLedger(Scanner scanner, LedgerService ledger) {
         while (!inputClosed) {
             ConsoleHelper.printHeader("LEDGER | Income and expenses, fused into one view");
-            System.out.println("A) All transactions");
-            System.out.println("D) Deposits only");
-            System.out.println("P) Payments only");
-            System.out.println("R) Reports and custom search");
-            System.out.println("H) Return home");
+            ConsoleHelper.printMenu("LEDGER MENU",
+                    "A) All transactions",
+                    "D) Deposits only",
+                    "P) Payments only",
+                    "R) Reports and custom search",
+                    "H) Return home");
 
             String choice = readLine(scanner, "Your choice: ");
             if (choice == null) {
@@ -103,13 +105,14 @@ public class Main {
             LocalDate today = LocalDate.now();
             ConsoleHelper.printHeader("REPORTS | Follow the money");
             System.out.println("Today's date: " + today);
-            System.out.println("1) Month to date");
-            System.out.println("2) Previous month");
-            System.out.println("3) Year to date");
-            System.out.println("4) Previous year");
-            System.out.println("5) Search by vendor");
-            System.out.println("6) Custom search");
-            System.out.println("0) Back to ledger");
+            ConsoleHelper.printMenu("REPORTS & SEARCH",
+                    "1) Month to date",
+                    "2) Previous month",
+                    "3) Year to date",
+                    "4) Previous year",
+                    "5) Search by vendor",
+                    "6) Custom search",
+                    "0) Back to ledger");
 
             String choice = readLine(scanner, "Your choice: ");
             if (choice == null) {
