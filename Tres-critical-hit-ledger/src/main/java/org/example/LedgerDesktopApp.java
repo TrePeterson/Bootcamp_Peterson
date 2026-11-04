@@ -53,8 +53,9 @@ public final class LedgerDesktopApp extends Application {
     private final UiMotion motion = new UiMotion();
     private VBox workspace;
     private ScrollPane workspaceScroll;
-    private final HBox modeBanner = new HBox(12);
-    private final Button demoButton = button("Presentation mode", "secondary-button");
+    private final VBox modeBanner = new VBox(12);
+    private final Button demoButton = button("Start demo", "secondary-button");
+    private final Label demoHint = label("Practice with sample records. Your ledger stays separate.", "shortcut-hint");
     private final CashFlowChart cashFlow = new CashFlowChart();
     private TitledPane chartPanel;
     private final Button exportButton = button("Export PDF report", "secondary-button");
@@ -80,7 +81,7 @@ public final class LedgerDesktopApp extends Application {
     private final Label netChange = label("$0.00", "metric-value", "gold-text");
     private final Label resultCount = label("", "muted");
     private final Label status = label("Ready", "status-text");
-    private final Circle statusDot = new Circle(4, Color.web("#b9e88a"));
+    private final Circle statusDot = new Circle(4, Color.web("#8ec8ff"));
     private final Label fileStatus = label("", "muted");
     private final Label filterError = label("", "error-label");
     private final Label scope = label("All-time overview", "eyebrow");
@@ -119,12 +120,16 @@ public final class LedgerDesktopApp extends Application {
         root.getStyleClass().add("app-root");
         root.setLeft(buildSidebarScroll());
         buildModeBanner();
-        workspace = new VBox(24, modeBanner, buildHeader(), buildMetrics(), buildLedgerPanel(), buildGearSection());
+        workspace = new VBox(24, buildHeader(), buildMetrics(), buildLedgerPanel(), buildGearSection());
         workspace.getStyleClass().add("workspace");
         workspaceScroll = new ScrollPane(workspace);
         workspaceScroll.setFitToWidth(true);
         workspaceScroll.getStyleClass().add("workspace-scroll");
-        root.setCenter(workspaceScroll);
+        // Keep the demo indicator and exit action visible while the ledger scrolls.
+        VBox workspaceShell = new VBox(modeBanner, workspaceScroll);
+        VBox.setVgrow(workspaceScroll, Priority.ALWAYS);
+        VBox.setMargin(modeBanner, new Insets(20, 30, 0, 30));
+        root.setCenter(workspaceShell);
         root.setBottom(buildStatusBar());
 
         Scene scene = new Scene(root, 1440, 960);
@@ -163,11 +168,9 @@ public final class LedgerDesktopApp extends Application {
     }
 
     private VBox buildSidebar() {
-        HBox emblem = new HBox(6, earring(), earring());
-        emblem.setAlignment(Pos.CENTER_LEFT);
-        VBox brand = new VBox(7, emblem, label("POTARA", "brand-name"),
+        VBox brand = new VBox(7, PotaraEmblem.create(), label("POTARA", "brand-name"),
                 label("FUSION LEDGER", "brand-subtitle"));
-        brand.setPadding(new Insets(4, 6, 25, 6));
+        brand.setPadding(new Insets(4, 6, 18, 6));
 
         Button overview = navButton("Overview", "overview");
         Button transactions = navButton("Transactions", "transactions");
@@ -175,12 +178,13 @@ public final class LedgerDesktopApp extends Application {
         Button partner = navButton("Potara Customs", "partner");
         VBox links = new VBox(7, label("WORKSPACE", "nav-caption"), overview, transactions, reports);
         VBox partnerLinks = new VBox(8, label("CONNECTED BUSINESS", "nav-caption"), partner);
-        partnerLinks.setPadding(new Insets(24, 0, 0, 0));
+        partnerLinks.setPadding(new Insets(14, 0, 0, 0));
         demoButton.setWrapText(true);
         demoButton.setMaxWidth(Double.MAX_VALUE);
         demoButton.setOnAction(event -> switchMode(!demoMode));
-        VBox demoControls = new VBox(10, label("PRESENT & EXPLORE", "nav-caption"), demoButton);
-        demoControls.setPadding(new Insets(24, 0, 0, 0));
+        demoHint.setWrapText(true);
+        VBox demoControls = new VBox(8, label("DEMO & PRACTICE", "nav-caption"), demoButton, demoHint);
+        demoControls.setPadding(new Insets(16, 0, 0, 0));
         CheckBox reduceMotion = new CheckBox("Reduce motion");
         reduceMotion.setId("reduce-motion");
         reduceMotion.selectedProperty().bindBidirectional(motion.reducedMotionProperty());
@@ -189,14 +193,16 @@ public final class LedgerDesktopApp extends Application {
                 ? "Reduced motion enabled. Actions still work immediately."
                 : "Motion enabled. Gentle transitions are back.", false));
         VBox preferences = new VBox(10, reduceMotion,
-                label("Ctrl+F  Search\nAlt+1–4  Switch views", "shortcut-hint"));
+                label("1–4  Switch views\nCtrl+F  Search\nEsc  Leave a search field", "shortcut-hint"));
         preferences.getStyleClass().add("sidebar-preferences");
 
         Region spacer = new Region();
         VBox.setVgrow(spacer, Priority.ALWAYS);
         Label footerCopy = label("Complete the setup.\nKeep the books.", "sidebar-copy");
+        Label accessoriesCopy = label("PC accessories + upgrades", "sidebar-copy");
+        accessoriesCopy.setWrapText(true);
         VBox footer = new VBox(8, label("POTARA FUSION GEAR", "sidebar-small-title"), footerCopy,
-                label("PC accessories + upgrades", "sidebar-copy"));
+                accessoriesCopy);
         footer.getStyleClass().add("sidebar-footer");
         VBox sidebar = new VBox(12, brand, links, partnerLinks, demoControls, spacer, preferences, footer);
         sidebar.getStyleClass().add("sidebar");
@@ -205,19 +211,15 @@ public final class LedgerDesktopApp extends Application {
         return sidebar;
     }
 
-    private StackPane earring() {
-        Circle rim = new Circle(13, Color.web("#15271c"));
-        rim.setStroke(Color.web("#e6c76d"));
-        rim.setStrokeWidth(2);
-        Circle gem = new Circle(6, Color.web("#b9e88a"));
-        return new StackPane(rim, gem);
-    }
-
     private Button navButton(String text, String view) {
         Button button = button(text, "nav-button");
+        Label key = label(String.valueOf(navigation.size() + 1), "nav-key");
+        button.setGraphic(key);
+        button.setGraphicTextGap(8);
+        button.setWrapText(true);
         button.setMaxWidth(Double.MAX_VALUE);
         button.setOnAction(event -> navigate(view, button));
-        button.setTooltip(new Tooltip(text + "  •  Alt+" + (navigation.size() + 1)));
+        button.setTooltip(new Tooltip(text + "  •  Press " + (navigation.size() + 1) + " when not typing"));
         navigation.add(button);
         return button;
     }
@@ -249,14 +251,14 @@ public final class LedgerDesktopApp extends Application {
             search.requestFocus();
             search.selectAll();
         });
-        KeyCode[] keys = {KeyCode.DIGIT1, KeyCode.DIGIT2, KeyCode.DIGIT3, KeyCode.DIGIT4};
-        for (int i = 0; i < keys.length; i++) {
-            Button destination = navigation.get(i);
-            scene.getAccelerators().put(new KeyCodeCombination(keys[i], KeyCombination.ALT_DOWN), () -> {
-                destination.fire();
-                destination.requestFocus();
-            });
-        }
+        ViewShortcuts.install(scene, navigation);
+        scene.addEventHandler(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ESCAPE && scene.getFocusOwner() instanceof TextInputControl) {
+                navigation.stream().filter(link -> link.getStyleClass().contains("nav-selected"))
+                        .findFirst().ifPresent(Node::requestFocus);
+                event.consume();
+            }
+        });
     }
 
     private VBox buildMetrics() {
@@ -352,6 +354,7 @@ public final class LedgerDesktopApp extends Application {
         search.setPromptText("Search a description or vendor…");
         search.setAccessibleText("Search description or vendor");
         search.setPrefWidth(320);
+        search.setMinWidth(160);
         HBox.setHgrow(search, Priority.ALWAYS);
         search.textProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         period.getItems().setAll("All time", "Month to date", "Previous month", "Year to date", "Previous year");
@@ -361,6 +364,8 @@ public final class LedgerDesktopApp extends Application {
         period.valueProperty().addListener((observable, oldValue, newValue) -> applyFilters());
         HBox typeButtons = new HBox(allTypes, typeToggle("Deposits", "deposit"), typeToggle("Payments", "payment"));
         typeButtons.getStyleClass().add("segmented-control");
+        typeButtons.setMinWidth(Region.USE_PREF_SIZE);
+        allTypes.setMinWidth(Region.USE_PREF_SIZE);
         allTypes.setToggleGroup(types);
         allTypes.setUserData("all");
         allTypes.setSelected(true);
@@ -412,6 +417,7 @@ public final class LedgerDesktopApp extends Application {
 
     private ToggleButton typeToggle(String title, String value) {
         ToggleButton button = new ToggleButton(title);
+        button.setMinWidth(Region.USE_PREF_SIZE);
         button.setToggleGroup(types);
         button.setUserData(value);
         motion.install(button);
@@ -663,17 +669,44 @@ public final class LedgerDesktopApp extends Application {
     }
 
     private void buildModeBanner() {
-        Label title = label("DEMO MODE • Fictional transactions", "demo-title");
-        Label detail = label("Practice freely. Demo changes are saved separately from your ledger.", "muted");
+        Label title = label("DEMO MODE — sample records", "demo-title");
+        title.setWrapText(true);
+        Label detail = label("Explore, practice, and present. Your own ledger stays separate.", "muted");
         detail.setWrapText(true);
         VBox text = new VBox(4, title, detail);
+        text.setMinWidth(0);
         HBox.setHgrow(text, Priority.ALWAYS);
-        Button reset = button("Reset demo", "secondary-button");
+        Button reset = button("Reset samples", "secondary-button");
+        reset.setId("demo-reset");
+        reset.setTooltip(new Tooltip("Start over with the original sample records and refreshed dates. You will confirm first."));
         reset.setOnAction(event -> resetDemo());
-        Button leave = button("Back to my ledger", "secondary-button");
+        Button leave = button("Exit demo", "primary-button");
+        leave.setId("demo-exit");
         leave.setOnAction(event -> switchMode(false));
-        modeBanner.getChildren().setAll(text, reset, leave);
-        modeBanner.setAlignment(Pos.CENTER_LEFT);
+        HBox actions = new HBox(8, reset, leave);
+        actions.setMinWidth(Region.USE_PREF_SIZE);
+        actions.setAlignment(Pos.CENTER_RIGHT);
+        HBox header = new HBox(16, text, actions);
+        header.setAlignment(Pos.CENTER_LEFT);
+        Button explore = button("Explore samples", "secondary-button");
+        explore.setId("demo-explore");
+        explore.setOnAction(event -> navigate("overview", navigation.get(0)));
+        Button practice = button("Try a deposit", "secondary-button");
+        practice.setId("demo-deposit");
+        practice.setOnAction(event -> addTransaction(true));
+        Button report = button("View a report", "secondary-button");
+        report.setId("demo-report");
+        report.setOnAction(event -> {
+            navigate("reports", navigation.get(2));
+            chartPanel.setExpanded(true);
+            setStatus("Demo report opened. Choose a period, or export the results below the table.", false);
+        });
+        FlowPane guide = new FlowPane(8, 8, label("Try it:", "form-label"), explore, practice, report);
+        guide.setAlignment(Pos.CENTER_LEFT);
+        Label persistence = label("Demo edits stay here for next time. Reset samples starts over; Exit demo returns to your ledger.", "muted");
+        persistence.setWrapText(true);
+        modeBanner.getChildren().setAll(header, guide, persistence);
+        modeBanner.setId("demo-banner");
         modeBanner.getStyleClass().add("demo-banner");
     }
 
@@ -689,7 +722,7 @@ public final class LedgerDesktopApp extends Application {
             demoMode = useDemo;
             updateModeAppearance();
             navigate("overview", navigation.get(0));
-            setStatus(useDemo ? "Presentation mode ready. Changes affect the demo ledger only."
+            setStatus(useDemo ? "Demo is ready. Try the actions above; all changes stay in your sample ledger."
                     : "Welcome back. Your own ledger is loaded.", false);
         } catch (IOException | IllegalArgumentException ex) {
             setStatus("Could not switch ledgers. " + ex.getMessage(), true);
@@ -698,8 +731,8 @@ public final class LedgerDesktopApp extends Application {
 
     private void resetDemo() {
         if (!demoMode) return;
-        if (!confirm("Reset the demo ledger?", "This replaces the demo transactions with the fictional starter history, "
-                + "using dates relative to today. Your own ledger will not change.", "Reset demo")) {
+        if (!confirm("Start over with fresh samples?", "This removes your demo edits and restores the fictional starter records "
+                + "with dates relative to today. Your own ledger will not change.", "Reset samples")) {
             setStatus("Reset cancelled. Your demo transactions are unchanged.", false);
             return;
         }
@@ -717,7 +750,11 @@ public final class LedgerDesktopApp extends Application {
     private void updateModeAppearance() {
         modeBanner.setVisible(demoMode);
         modeBanner.setManaged(demoMode);
-        demoButton.setText(demoMode ? "Back to my ledger" : "Presentation mode");
+        demoButton.setText(demoMode ? "Exit demo" : "Start demo");
+        demoHint.setText(demoMode ? "Demo is ON. Changes save only to your sample records."
+                : "Practice with sample records. Your ledger stays separate.");
+        demoButton.getStyleClass().remove("demo-active");
+        if (demoMode) demoButton.getStyleClass().add("demo-active");
         window.setTitle((demoMode ? "[DEMO] " : "") + "Potara Fusion Ledger | Potara Fusion Gear");
         fileStatus.setTooltip(new Tooltip(files.getFilePath().toString()));
     }
@@ -874,9 +911,10 @@ public final class LedgerDesktopApp extends Application {
     }
 
     private void addTransaction(boolean deposit) {
-        if (TransactionDialog.show(window, deposit, ledger::addTransaction, motion)) {
+        if (TransactionDialog.show(window, deposit, ledger::addTransaction, motion, demoMode)) {
             navigate("transactions", navigation.get(1));
-            setStatus((deposit ? "Deposit" : "Payment") + " saved. Your ledger is up to date.", false);
+            setStatus((demoMode ? "Demo " : "") + (deposit ? "deposit" : "payment")
+                    + (demoMode ? " saved to sample records. Your own ledger is unchanged." : " saved. Your ledger is up to date."), false);
         }
     }
 
@@ -933,7 +971,7 @@ public final class LedgerDesktopApp extends Application {
             status.getStyleClass().add("negative");
         }
         status.setTooltip(new Tooltip(message));
-        statusDot.setFill(Color.web(error ? "#efaaa4" : "#b9e88a"));
+        statusDot.setFill(Color.web(error ? "#ffb6b0" : "#8ec8ff"));
         motion.feedback(status);
     }
 
