@@ -56,10 +56,14 @@ public final class TransactionDialog {
     }
 
     public static boolean show(Window owner, boolean deposit, TransactionSaver saver, UiMotion motion) {
+        return show(owner, deposit, saver, motion, false);
+    }
+
+    public static boolean show(Window owner, boolean deposit, TransactionSaver saver, UiMotion motion, boolean demo) {
         Objects.requireNonNull(saver, "A transaction saver is required.");
         String transactionType = deposit ? "deposit" : "payment";
         Dialog<Boolean> dialog = new Dialog<>();
-        dialog.setTitle(deposit ? "Add deposit" : "Make payment");
+        dialog.setTitle((demo ? "[DEMO] " : "") + (deposit ? "Add deposit" : "Make payment"));
         dialog.setResizable(true);
         if (owner != null) {
             dialog.initOwner(owner);
@@ -94,12 +98,18 @@ public final class TransactionDialog {
         addField(form, 3, "Vendor / customer", vendor);
         addField(form, 4, "Amount ($)", amount);
 
-        Label title = new Label(deposit ? "Record money coming in" : "Record money going out");
+        Label title = new Label(demo ? (deposit ? "Try a demo deposit" : "Try a demo payment")
+                : (deposit ? "Record money coming in" : "Record money going out"));
         title.getStyleClass().add("dialog-title");
+        title.setWrapText(true);
         Label instructions = new Label(deposit
                 ? "Enter a positive amount received. Review the details before saving."
                 : "Enter a positive amount paid. The ledger will record it as a negative payment.");
         instructions.getStyleClass().add("muted");
+        if (demo) {
+            instructions.setText("Practice with sample records. Enter a positive amount, then review before saving. "
+                    + "This changes only the demo ledger.");
+        }
         instructions.setWrapText(true);
         Label fieldHint = new Label("Dates use YYYY-MM-DD. Description and vendor allow up to "
                 + Transaction.MAX_TEXT_LENGTH + " characters each.");
@@ -158,7 +168,7 @@ public final class TransactionDialog {
             }
 
             Window dialogWindow = pane.getScene().getWindow();
-            if (!confirm(dialogWindow, transaction, transactionType, motion)) {
+            if (!confirm(dialogWindow, transaction, transactionType, motion, demo)) {
                 event.consume();
                 return;
             }
@@ -274,14 +284,15 @@ public final class TransactionDialog {
     }
 
     private static boolean confirm(Window owner, Transaction transaction,
-                                   String transactionType, UiMotion motion) {
-        ButtonType saveType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+                                   String transactionType, UiMotion motion, boolean demo) {
+        ButtonType saveType = new ButtonType(demo ? "Save to demo" : "Save", ButtonBar.ButtonData.OK_DONE);
         ButtonType backType = new ButtonType("Back", ButtonBar.ButtonData.CANCEL_CLOSE);
         Alert confirmation = new Alert(Alert.AlertType.CONFIRMATION, "", saveType, backType);
         confirmation.initOwner(owner);
         confirmation.initModality(Modality.WINDOW_MODAL);
-        confirmation.setTitle("Confirm " + transactionType);
-        confirmation.setHeaderText("Ready to save this " + transactionType + "?");
+        confirmation.setTitle((demo ? "[DEMO] " : "") + "Confirm " + transactionType);
+        confirmation.setHeaderText(demo ? "Save this " + transactionType + " to the demo ledger?"
+                : "Ready to save this " + transactionType + "?");
         confirmation.setGraphic(null);
         String amount = String.format(Locale.US, "%s$%,.2f",
                 transaction.isPayment() ? "-" : "", transaction.getAmount().abs());
@@ -322,9 +333,9 @@ public final class TransactionDialog {
         if (stylesheet != null) {
             pane.getStylesheets().add(stylesheet.toExternalForm());
         } else {
-            pane.setStyle("-fx-background-color: #14151b; -fx-base: #14151b; "
-                    + "-fx-control-inner-background: #20222d; -fx-text-base-color: #f4f4f5; "
-                    + "-fx-text-background-color: #f4f4f5;");
+            pane.setStyle("-fx-background-color: #152440; -fx-base: #152440; "
+                    + "-fx-control-inner-background: #0c1b34; -fx-text-base-color: #f5f8ff; "
+                    + "-fx-text-background-color: #f5f8ff;");
         }
     }
 }

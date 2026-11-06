@@ -8,7 +8,7 @@ A Java application with a console interface and an optional JavaFX desktop inter
 
 The theme connects Potara Fusion Gear's setup accessories and upgrades with **Potara Customs**, a PC-building business. The demonstration records include collaboration sales to Potara Customs and expenses for inventory and shipping. These are fictional transactions used to demonstrate the ledger.
 
-The Dragon Ball Potara-inspired interface uses gold borders, green headings and prompts, and purple accents.
+The JavaFX interface uses a black background with Vegito-inspired royal blue, orange, white, and Potara gold accents, with larger text throughout. A bright orange POTARA name and a vector pair of Potara earrings identify the sidebar. Blue deposits and orange payments match across the totals, table, and chart. The console uses gold borders, green headings and prompts, and purple accents.
 
 Transactions are saved locally, so the ledger is ready when you reopen the application.
 
@@ -21,15 +21,15 @@ Transactions are saved locally, so the ledger is ready when you reopen the appli
 - **Search by vendor:** find a vendor's transactions without worrying about capitalization.
 - **Combine custom filters:** search by date range, partial description, partial vendor name, and exact amount. Leave a field blank to skip it.
 - **See totals:** view deposits, payments, and net change for the displayed records.
-- **Use a polished console interface:** colored tables, aligned dollar amounts, wrapped descriptions, clear prompts, cancellation, and saved/not-saved messages.
+- **Use a polished console interface:** boxed menus and input prompts, colored tables, aligned dollar amounts, wrapped descriptions, cancellation, and saved/not-saved messages. Type at the `>` marker below each prompt box; the existing transaction and totals tables remain separate information displays.
 - **Choose the desktop interface:** a JavaFX dashboard with transaction totals, a searchable table, calendar reports, advanced filters, and deposit/payment forms that require review before saving.
 - **Explore connected transactions:** click a keyboard, mouse, or headset illustration to filter transaction text, or open the Potara Customs view to match that vendor exactly.
 - **See monthly cash flow:** a collapsible bar chart follows the same filters as the table. Hover a bar for its exact dollar amount; scroll sideways when more months are shown.
 - **Export a PDF report:** save the displayed transactions with active filters, date range, totals, and page numbers. Open the saved report directly from the app.
-- **Practice in presentation mode:** work with a separate, persistent demo ledger. A visible DEMO banner identifies the mode, and a confirmed reset restores fictional starter data with dates relative to today.
+- **Practice in presentation mode:** select **Start demo** to work with a separate, persistent demo ledger. A DEMO banner stays visible above the scrolling workspace, offers guided practice actions, and provides **Reset samples** and **Exit demo** controls. Resetting requires confirmation before replacing demo edits with fictional starter data dated relative to today.
 - **Launch from Windows:** a portable application includes its Java runtime and Potara icon, so users can open it without IntelliJ or Maven.
 - **Move comfortably through the app:** short view transitions, responsive buttons, and clear save/export feedback. Turn on **Reduce motion** in the sidebar to stop decorative animation immediately.
-- **Use the keyboard:** **Ctrl+F** focuses search; **Alt+1–4** opens Overview, Transactions, Reports & search, and Potara Customs. Tab moves through controls, with visible focus outlines.
+- **Use the keyboard:** plain **1–4** or the matching numpad keys open Overview, Transactions, Reports & search, and Potara Customs. They do not switch views while you are typing in a field, choosing a control value, or using an open selection popup. **Ctrl+F** focuses search; **Esc** returns focus from a search field to the selected navigation button. Tab moves through controls, with visible focus outlines.
 
 ## Technology
 
@@ -75,17 +75,17 @@ Both interfaces use the same `transactions.csv` and the same transaction, report
 
 ### Run the Windows application
 
-Double-click the **Potara Fusion Ledger** desktop shortcut created for this development setup. It opens the existing project ledger. The latest portable application is in `target/windows-motion-final/Potara Fusion Ledger`; keep that entire folder together, including `app` and `runtime`. Earlier builds are preserved separately.
+Double-click the **Potara Fusion Ledger** desktop shortcut created for this development setup. It opens the existing project ledger. The latest portable application is in `target/windows-vegito-refined/Potara Fusion Ledger`; keep that entire folder together, including `app` and `runtime`. Earlier builds are preserved separately.
 
 Launching the `.exe` directly defaults to `%LOCALAPPDATA%/PotaraFusionLedger/transactions.csv`, starting empty if needed. The desktop shortcut explicitly selects this project's CSV. No personal ledger is bundled in the portable application. See [Windows launcher](docs/WINDOWS_LAUNCHER.md) for build steps, custom data paths, and distribution details.
 
 ### Present, filter, and export
 
-1. Select **Presentation mode** in the sidebar. The purple DEMO banner confirms that you are using fictional records in a separate file.
-2. Choose **Reset demo** before a presentation if you want the original demo records back. Review the confirmation; resetting does not change your normal ledger.
-3. Try **Month to date**, a description search, or the **Potara Customs** view. The table, totals, and cash-flow chart all reflect the same matching records.
+1. Select **Start demo** in the sidebar. The DEMO banner stays above the scrolling workspace and confirms that you are using fictional records in a separate file. The sidebar action becomes **Exit demo**.
+2. Choose **Reset samples** before a presentation if you want fresh starter records. The confirmation explains that this discards demo edits only; your normal ledger does not change.
+3. Use the banner's **Explore samples** to open Overview, **Try a deposit** to practice a transaction, or **View a report** to open Reports & search with **All time** selected and the monthly chart expanded. This keeps saved samples visible when the calendar month changes. A demo transaction's review uses **Save to demo**. The table, totals, and cash-flow chart reflect the same matching records; you can also try a calendar report, description search, or the **Potara Customs** view.
 4. Select **Export PDF report** below the table. Choose a filename and wait for the saved confirmation, then select **Open saved report**. Demo exports are clearly marked.
-5. Select **Back to my ledger** to reload your own records.
+5. Select **Exit demo** in the banner or sidebar to reload your own records.
 
 The chart shows months that contain matching transactions, ordered oldest to newest. Empty months are omitted; an empty result shows an explanation instead of bars. Exact sums use `BigDecimal`; conversion to chart coordinates happens only after summing. The PDF captures the displayed rows and filters when export starts, even if you subsequently change the view. Invalid filter input must be corrected before export.
 
@@ -146,7 +146,7 @@ Calendar reports use the computer's current local date. Previous month/year repo
 - **Reports & search:** choose **Month to date**, **Previous month**, **Year to date**, or **Previous year**. Advanced filters add inclusive start/end dates, a partial description, a vendor, and an exact signed amount. Check **Match full vendor name** for an exact vendor match. All active filters must match; blank fields are skipped.
 - **Potara Customs:** opens the transactions for the full vendor name `Potara Customs`, ignoring capitalization.
 - **Hardware cards:** clicking a keyboard, mouse, or headset illustration searches transaction text for that hardware. These images are filter shortcuts, not products for sale or a separate inventory.
-- **+ Deposit / − Payment:** enter the date, time, description, vendor/customer, and positive amount. Choose **Review & save**, inspect the confirmation, and select **Save**. **Back** returns to the form; **Cancel** leaves without recording the transaction. Payments receive a negative sign automatically.
+- **+ Deposit / − Payment:** enter the date, time, description, vendor/customer, and positive amount. Choose **Review & save**, inspect the confirmation, and select **Save** in your normal ledger or **Save to demo** in demo mode. **Back** returns to the form; **Cancel** leaves without recording the transaction. Payments receive a negative sign automatically.
 - **View selected entry:** select a table row and click this button, or double-click a row, to read the complete transaction details.
 - **Clear filters:** returns the table and totals to all transactions. **Refresh** reloads saved records from the CSV file.
 
@@ -193,6 +193,8 @@ Tres-critical-hit-ledger/
     │   ├── LedgerDesktopApp.java
     │   ├── TransactionDialog.java
     │   ├── UiMotion.java
+    │   ├── ViewShortcuts.java
+    │   ├── PotaraEmblem.java
     │   ├── CashFlowChart.java
     │   ├── DemoData.java
     │   ├── ReportExporter.java
@@ -216,6 +218,8 @@ Tres-critical-hit-ledger/
 | `LedgerDesktopApp` | Builds the dashboard, table, filters, navigation, and transaction-detail view. |
 | `TransactionDialog` | Collects deposit/payment details, validates input, requests confirmation, and calls the existing save operation. |
 | `UiMotion` | Adds brief visual transitions, cancels interrupted animations, and applies reduced motion without changing business actions. |
+| `ViewShortcuts` | Routes plain number and numpad keys to the four views while leaving text entry and selection controls alone. |
+| `PotaraEmblem` | Draws the sidebar's paired earrings using JavaFX vector shapes and gradients. |
 | `CashFlowChart` | Groups matching transactions by month and draws deposits and payments with exact-value tooltips. |
 | `DemoData` | Initializes and resets an isolated fictional ledger while protecting the normal file. |
 | `ReportExporter` | Creates an immutable report snapshot, paginates it, and safely writes a PDF. |
@@ -223,7 +227,7 @@ Tres-critical-hit-ledger/
 | `LedgerService` | Sorts and filters transactions, calculates totals, and coordinates saving. |
 | `FileManager` | Loads and validates the CSV file and writes updated transaction history. |
 
-There are **twelve top-level Java classes**. `Main` and `ConsoleHelper` handle the console; `DesktopLauncher`, `LedgerDesktopApp`, `TransactionDialog`, `CashFlowChart`, and `UiMotion` handle the desktop interface. `DemoData` manages presentation data and `ReportExporter` creates reports. Both front ends use `Transaction`, `LedgerService`, and `FileManager` for the same rules and saved data. In simple terms, the front end is what the user sees and clicks or types into; the back end checks, searches, totals, and saves the records.
+There are **fourteen top-level Java classes**. `Main` and `ConsoleHelper` handle the console; `DesktopLauncher`, `LedgerDesktopApp`, `TransactionDialog`, `CashFlowChart`, `UiMotion`, `ViewShortcuts`, and `PotaraEmblem` handle the desktop interface. `DemoData` manages presentation data and `ReportExporter` creates reports. Both front ends use `Transaction`, `LedgerService`, and `FileManager` for the same rules and saved data. In simple terms, the front end is what the user sees and clicks or types into; the back end checks, searches, totals, and saves the records.
 
 Desktop colors and layout are defined in `potara.css`. The three PNG illustrations are packaged resources. Their prompts and provenance are documented in [Asset prompts](docs/ASSET_PROMPTS.md).
 
@@ -241,7 +245,7 @@ The desktop window uses a custom Potara-inspired icon: paired green gemstones an
 
 **Two interfaces, shared rules:** the desktop app adds a visual front end while retaining the console entry point and existing ledger logic. Both interfaces work with the same CSV file rather than maintaining separate copies of a transaction history.
 
-**Potara-inspired color:** the desktop uses a dark green workspace, gold highlights, green deposits, muted red payments, and purple filter controls. The console uses gold borders, green headings, and purple accents. Labels and signs also identify transaction types. Console ANSI colors are applied after ASCII Table calculates the layout; desktop styling lives in CSS. Neither interface writes display formatting to the CSV file.
+**Potara-inspired color:** the desktop uses a black workspace, royal blue panels, orange actions and branding, and gold highlights. Blue deposits and orange payments stay consistent across totals, table amounts, and chart bars. The sidebar emblem is drawn with vector shapes so it stays sharp. The console uses gold borders, green headings, and purple accents. Labels and signs also identify transaction types. Console ANSI colors are applied after ASCII Table calculates the layout; desktop styling lives in CSS. Neither interface writes display formatting to the CSV file.
 
 ## Optional Settings
 
