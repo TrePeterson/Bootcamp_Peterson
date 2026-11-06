@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>Potara Fusion Ledger — paired gold hoops and green gemstones</title>
+  <defs>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#244735"/><stop offset="1" stop-color="#0b1912"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#fff0ad"/><stop offset="1" stop-color="#b28132"/>
+    </linearGradient>
+    <linearGradient id="green" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#d5f995"/><stop offset="1" stop-color="#16834f"/>
+    </linearGradient>
+    <g id="earring">
+      <ellipse cx="0" cy="63" rx="18" ry="25" fill="none" stroke="url(#gold)" stroke-width="9"/>
+      <path d="M0 88V110" stroke="url(#gold)" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="0" cy="142" r="35" fill="url(#green)" stroke="#e5c56d" stroke-width="3"/>
+      <rect x="-13" y="101" width="26" height="14" rx="3" fill="url(#gold)"/>
+      <ellipse cx="-15" cy="129" rx="7" ry="10" fill="#f8ffda" opacity=".72"/>
+      <path d="M-17.68 159.68 A25 25 0 0 0 19.15 158.07" fill="none" stroke="#0c5c3c" stroke-opacity=".39" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </defs>
+  <rect x="8" y="8" width="240" height="240" rx="28" fill="url(#badge)" stroke="#8a7945" stroke-width="2"/>
+  <use href="#earring" transform="translate(86 0) rotate(-10 0 108)"/>
+  <use href="#earring" transform="translate(170 0) rotate(10 0 108)"/>
+  <path d="M128 187 L133 201 L147 206 L133 211 L128 225 L123 211 L109 206 L123 201Z" fill="#edcf7d"/>
+</svg>
